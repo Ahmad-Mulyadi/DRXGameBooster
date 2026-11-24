@@ -1,0 +1,34 @@
+{
+  "files": {
+    "DRX-GAME-TURBO-PRO-DEBUG.apk": {
+      "sha256": "3778cf24b4d88b146d6ae10f430f29f66b11a789fe7e4274c4ce32c601a25300",
+      "fileSize": 21937237,
+      "versionCode": 7,
+      "versionName": "1.20.0",
+      "appId": "com.derrex.gameturbo",
+      "signingCertSha256": "37744d29b11d9c94c255800d024040b8548f6cc8945e606ec8a594781f292e8c",
+      "lastSeenUtc": "2026-11-24"
+    },
+    "DRX-GAME-TURBO-PRO-v1.20.0.apk": {
+      "sha256": "3778cf24b4d88b146d6ae10f430f29f66b11a789fe7e4274c4ce32c601a25300",
+      "fileSize": 21937237,
+      "versionCode": 7,
+      "versionName": "1.20.0",
+      "appId": "com.derrex.gameturbo",
+      "signingCertSha256": "37744d29b11d9c94c255800d024040b8548f6cc8945e606ec8a594781f292e8c",
+      "lastSeenUtc": "2026-11-24"
+    },
+    "DRX-GAME-TURBO-PRO.apk": {
+      "sha256": "3778cf24b4d88b146d6ae10f430f29f66b11a789fe7e4274c4ce32c601a25300",
+      "fileSize": 21937237,
+      "versionCode": 7,
+      "versionName": "1.20.0",
+      "appId": "com.derrex.gameturbo",
+      "signingCertSha256": "37744d29b11d9c94c255800d024040b8548f6cc8945e606ec8a594781f292e8c",
+      "lastSeenUtc": "2026-11-24"
+    }
+  },
+  "highestPublishedVersionCode": 7,
+  "primaryCertSha256": "37744d29b11d9c94c255800d024040b8548f6cc8945e606ec8a594781f292e8c",
+  "updatedAtUtc": "2026-11-24T10:40:19Z"
+}

@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">DRX GAME TURBO PRO</string>
+    <string name="floating_service_channel_name">DRX Floating Sidebar</string>
+    <string name="floating_service_channel_desc">Controls the active floating gaming sidebar overlay.</string>
+    <string name="timer_channel_name">DRX Gaming Timer</string>
+    <string name="timer_channel_desc">Alerts when a gaming countdown timer finishes.</string>
+    <string name="screen_recorder_channel_name">DRX Screen Recorder</string>
+    <string name="screen_recorder_channel_desc">Displays active screen recording timer and stop controls.</string>
+    <string name="notification_listener_service_name">DRX Game Notification Viewer</string>
+    <string name="event_reminder_channel_name">DRX Game Event Reminders</string>
+    <string name="event_reminder_channel_desc">Scheduled reminders for game events, tournaments, and rewards.</string>
+    <string name="update_channel_name">DRX App Updates</string>
+    <string name="update_channel_desc">Alerts when a verified new DRX GAME TURBO PRO version is available.</string>
+</resources>

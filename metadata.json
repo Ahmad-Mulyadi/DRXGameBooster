@@ -1,0 +1,6 @@
+{
+  "name": "DRX GAME TURBO PRO",
+  "description": "Professional native Android gaming utility, real-time system telemetry monitor, floating game sidebar, network diagnostics, sound center, and voice studio by DerreX.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

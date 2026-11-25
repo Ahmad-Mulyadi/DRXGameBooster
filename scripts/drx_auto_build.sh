@@ -12,7 +12,7 @@ LOG_FILE="$LOGS_DIR/build-log.txt"
 STAGING_DIR="$ROOT_DIR/.drx_build_staging"
 
 VERSION_NAME="$(sed -nE 's/.*versionName *= *"([^"]+)".*/\1/p' "$ROOT_DIR/app/build.gradle.kts" | head -n1)"
-VERSION_NAME="${VERSION_NAME:-1.20.0}"
+VERSION_NAME="${VERSION_NAME:-1.25.5}"
 
 APK_VERSIONED_NAME="DRX-GAME-TURBO-PRO-v${VERSION_NAME}.apk"
 APK_VERSIONED_OUT="$APK_DIR/$APK_VERSIONED_NAME"

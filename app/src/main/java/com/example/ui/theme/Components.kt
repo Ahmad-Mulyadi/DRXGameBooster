@@ -254,16 +254,23 @@ fun DrxSectionHeader(
 @Composable
 fun DrxLogoBadge(size: Dp = 40.dp, modifier: Modifier = Modifier) {
   val drxColors = LocalDrxColors.current
-  Image(
-    painter = painterResource(id = R.drawable.drx_logo),
-    contentDescription = "DRX GAME TURBO PRO Logo",
-    contentScale = ContentScale.Crop,
+  Box(
+    contentAlignment = Alignment.Center,
     modifier =
       modifier
         .size(size)
         .clip(RoundedCornerShape(13.dp))
-        .border(1.dp, drxColors.electricBlue.copy(alpha = 0.28f), RoundedCornerShape(13.dp)),
-  )
+        .background(Color(0xFF05070C))
+        .border(1.dp, drxColors.glassBorder, RoundedCornerShape(13.dp))
+        .padding(3.dp),
+  ) {
+    Image(
+      painter = painterResource(id = R.drawable.drx_logo_noborder),
+      contentDescription = "DRX GAME TURBO PRO Logo",
+      contentScale = ContentScale.Fit,
+      modifier = Modifier.fillMaxSize(),
+    )
+  }
 }
 
 @Composable

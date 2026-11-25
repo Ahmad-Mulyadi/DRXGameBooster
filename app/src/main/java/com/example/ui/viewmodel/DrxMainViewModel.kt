@@ -38,12 +38,14 @@ import com.example.data.model.GlobalGamingStatistics
 import com.example.data.model.InstalledAppItem
 import com.example.data.model.LanguageMode
 import com.example.data.model.LaunchAnimationQuality
+import com.example.data.model.MediaItemType
 import com.example.data.model.PermissionStateItem
 import com.example.data.model.PreGameCheckReport
 import com.example.data.model.ProfileConfig
 import com.example.data.model.QuickOverlayProfile
 import com.example.data.model.SessionComparisonMetric
 import com.example.data.model.SessionIntelligenceSummary
+import com.example.data.model.SessionRecapSummary
 import com.example.data.model.SessionTimelineEventType
 import com.example.data.model.SystemGameUsageSummary
 import com.example.data.model.SystemTelemetry
@@ -52,13 +54,16 @@ import com.example.data.prefs.DrxUserPrefs
 import com.example.system.AnnouncementNotifier
 import com.example.system.AnnouncementSchedulePlanner
 import com.example.system.AnnouncementScheduler
+import com.example.system.DrxMediaStorageManager
 import com.example.system.FloatingSidebarService
 import com.example.system.GameResourceReportEngine
 import com.example.system.GameStatsCollector
 import com.example.system.GamingFocusModeController
 import com.example.system.GamingFocusUiState
 import com.example.system.PreGameCheckEngine
+import com.example.system.ScreenRecorderStateHolder
 import com.example.system.SessionIntelligenceEngine
+import com.example.system.SmartStorageInspectorEngine
 import com.example.system.SystemTweaksManager
 import com.example.system.TelemetryMonitor
 import com.example.system.TimeAndSizeFormatters
@@ -223,11 +228,26 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
   private val _lastAutoAppliedProfileBanner = MutableStateFlow<String?>(null)
   val lastAutoAppliedProfileBanner: StateFlow<String?> = _lastAutoAppliedProfileBanner.asStateFlow()
 
+  private val _boostAnimationVisible = MutableStateFlow(false)
+  val boostAnimationVisible: StateFlow<Boolean> = _boostAnimationVisible.asStateFlow()
+
+  private val _boostStageIndex = MutableStateFlow(0)
+  val boostStageIndex: StateFlow<Int> = _boostStageIndex.asStateFlow()
+
+  private val _boostReadyToPlay = MutableStateFlow(false)
+  val boostReadyToPlay: StateFlow<Boolean> = _boostReadyToPlay.asStateFlow()
+
+  private val _latestSessionRecap = MutableStateFlow<SessionRecapSummary?>(null)
+  val latestSessionRecap: StateFlow<SessionRecapSummary?> = _latestSessionRecap.asStateFlow()
+
   private var focusTimerJob: Job? = null
   @Volatile private var lastTimelineTempC: Float = 0f
   @Volatile private var lastTimelineBatteryPct: Int = -1
   @Volatile private var lastTimelineNetStatus: String = ""
   @Volatile private var lastTimelineThermalWarnAtMs: Long = 0L
+  @Volatile private var lastTimelineMemoryWarnAtMs: Long = 0L
+  @Volatile private var lastTimelineFpsDropAtMs: Long = 0L
+  @Volatile private var wasRecordingActive: Boolean = false
   @Volatile private var lastAutoAppliedForegroundPkg: String? = null
 
   val devicePerformanceState: StateFlow<DevicePerformanceState> =
@@ -313,10 +333,51 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
   init {
     telemetryMonitor.startFpsMonitoring()
     startTelemetryLoop()
+    observeRecorderTimelineEvents()
     scanInstalledGames(autoSeed = true)
     refreshUsageStats()
     refreshFloatingShortcuts()
     syncAnnouncementSchedule(forceReschedule = false)
+  }
+
+  private fun observeRecorderTimelineEvents() {
+    viewModelScope.launch(Dispatchers.IO) {
+      ScreenRecorderStateHolder.state.collect { rec ->
+        val isRec = rec.isRecording
+        if (isRec && !wasRecordingActive) {
+          val active = _activeSession.value
+          if (active != null) {
+            val snap = _telemetry.value
+            val isIndo = userPrefs.value.language == LanguageMode.INDONESIAN
+            val safeTemp = snap.batteryInfo.temperatureC.sanitizeFinite(30f)
+            val ramFreeMb = (snap.memoryInfo.availBytes / (1024L * 1024L)).coerceAtLeast(0L)
+            val netSummary =
+              if (snap.networkSnapshot.isConnected) "${snap.networkSnapshot.transportType} (${snap.networkSnapshot.networkSubType})"
+              else "Offline"
+            runCatching {
+              repository.insertSessionTimelineEvent(
+                SessionTimelineEventEntity(
+                  sessionId = active.sessionId,
+                  gamePackageName = active.packageName,
+                  gameName = active.gameName,
+                  eventType = SessionTimelineEventType.RECORDING_STARTED.code,
+                  title = if (isIndo) "Rekaman Layar Dimulai" else "Screen Recording Started",
+                  detail = "${rec.resolutionPreset}p • ${rec.targetFps} FPS",
+                  timestampMs = System.currentTimeMillis(),
+                  batteryPercent = snap.batteryInfo.levelPercent,
+                  batteryTempC = safeTemp,
+                  ramFreeMb = ramFreeMb,
+                  ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+                  networkStatus = netSummary,
+                  thermalStatusCode = snap.thermalStatusCode,
+                )
+              )
+            }
+          }
+        }
+        wasRecordingActive = isRec
+      }
+    }
   }
 
   private fun startTelemetryLoop() {
@@ -434,6 +495,46 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
                   eventType = SessionTimelineEventType.NETWORK_CHANGED.code,
                   title = if (isIndo) "Status Jaringan Berubah" else "Network Changed",
                   detail = netSummary,
+                  timestampMs = nowMs,
+                  batteryPercent = snap.batteryInfo.levelPercent,
+                  batteryTempC = safeTemp,
+                  ramFreeMb = ramFreeMb,
+                  ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+                  networkStatus = netSummary,
+                  thermalStatusCode = snap.thermalStatusCode,
+                )
+              )
+            }
+            if ((snap.memoryInfo.lowMemory || snap.memoryInfo.usedPercent >= 88f) && (nowMs - lastTimelineMemoryWarnAtMs >= 30_000L)) {
+              lastTimelineMemoryWarnAtMs = nowMs
+              repository.insertSessionTimelineEvent(
+                SessionTimelineEventEntity(
+                  sessionId = currentSession.sessionId,
+                  gamePackageName = currentSession.packageName,
+                  gameName = currentSession.gameName,
+                  eventType = SessionTimelineEventType.MEMORY_PRESSURE.code,
+                  title = if (isIndo) "Tekanan Memori RAM" else "RAM Memory Pressure",
+                  detail = "${snap.memoryInfo.usedPercent.toInt()}% • ${ramFreeMb} MB free",
+                  timestampMs = nowMs,
+                  batteryPercent = snap.batteryInfo.levelPercent,
+                  batteryTempC = safeTemp,
+                  ramFreeMb = ramFreeMb,
+                  ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+                  networkStatus = netSummary,
+                  thermalStatusCode = snap.thermalStatusCode,
+                )
+              )
+            }
+            if (snap.uiFps in 1f..45f && (nowMs - lastTimelineFpsDropAtMs >= 20_000L)) {
+              lastTimelineFpsDropAtMs = nowMs
+              repository.insertSessionTimelineEvent(
+                SessionTimelineEventEntity(
+                  sessionId = currentSession.sessionId,
+                  gamePackageName = currentSession.packageName,
+                  gameName = currentSession.gameName,
+                  eventType = SessionTimelineEventType.FPS_DROP.code,
+                  title = if (isIndo) "Penurunan UI FPS Terdeteksi" else "UI FPS Dip Detected",
+                  detail = "${snap.uiFps.toInt()} FPS / ${snap.displayInfo.refreshRateHz.toInt()} Hz",
                   timestampMs = nowMs,
                   batteryPercent = snap.batteryInfo.levelPercent,
                   batteryTempC = safeTemp,
@@ -618,28 +719,92 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
 
   private suspend fun prepareGameSession(game: GameEntity, activity: Activity?) {
     val currentPrefs = userPrefs.value
+    val automation = repository.getGameProfileAutomation(game.packageName)
+    val autoProfile =
+      if (automation != null && automation.enabled) {
+        GamingProfile.entries.find { it.id == automation.gamingProfileId }
+      } else null
     val gameProfile =
-      GamingProfile.entries.find { it.id == game.profileName } ?: currentPrefs.activeProfile
+      autoProfile ?: GamingProfile.entries.find { it.id == game.profileName } ?: currentPrefs.activeProfile
     val config = currentPrefs.resolveProfileConfig(gameProfile)
     val isIndo = currentPrefs.language == LanguageMode.INDONESIAN
 
     tweaksManager.performSmartBoost(telemetryMonitor, config, activity, isIndo)
     prefs.recordBoost(System.currentTimeMillis())
 
-    if (config.autoFloatingSidebar && tweaksManager.canDrawOverlays()) {
+    if (automation != null && automation.enabled) {
+      applyGameProfileAutomation(automation, activity)
+    } else if (config.autoFloatingSidebar && tweaksManager.canDrawOverlays()) {
       setFloatingSidebar(true, targetGamePackage = game.packageName)
     }
 
     val snap = _telemetry.value
+    val nowMs = System.currentTimeMillis()
+    val sessionId = "${game.packageName}_${nowMs}"
+    val safeTemp = snap.batteryInfo.temperatureC.sanitizeFinite(30f)
+    val ramFreeMb = (snap.memoryInfo.availBytes / (1024L * 1024L)).coerceAtLeast(0L)
+    val netSummary =
+      if (snap.networkSnapshot.isConnected) "${snap.networkSnapshot.transportType} (${snap.networkSnapshot.networkSubType})"
+      else "Offline"
+
+    lastTimelineTempC = safeTemp
+    lastTimelineBatteryPct = snap.batteryInfo.levelPercent
+    lastTimelineNetStatus = netSummary
+    lastTimelineThermalWarnAtMs = 0L
+    lastTimelineMemoryWarnAtMs = 0L
+    lastTimelineFpsDropAtMs = 0L
+
     _activeSession.value =
       ActiveGameSession(
         packageName = game.packageName,
         gameName = game.appName,
-        startedAtMs = System.currentTimeMillis(),
+        startedAtMs = nowMs,
         profileUsed = gameProfile,
         batteryStartPercent = snap.batteryInfo.levelPercent,
-        peakTempC = snap.batteryInfo.temperatureC,
+        peakTempC = safeTemp,
+        sessionId = sessionId,
       )
+
+    withContext(Dispatchers.IO) {
+      runCatching {
+        repository.insertSessionTimelineEvent(
+          SessionTimelineEventEntity(
+            sessionId = sessionId,
+            gamePackageName = game.packageName,
+            gameName = game.appName,
+            eventType = SessionTimelineEventType.LAUNCHED.code,
+            title = if (isIndo) "Game Diluncurkan" else "Game Launched",
+            detail = "${game.appName} • ${gameProfile.name}",
+            timestampMs = nowMs,
+            batteryPercent = snap.batteryInfo.levelPercent,
+            batteryTempC = safeTemp,
+            ramFreeMb = ramFreeMb,
+            ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+            networkStatus = netSummary,
+            thermalStatusCode = snap.thermalStatusCode,
+          )
+        )
+        if (_isDeviceMonitoringActive.value) {
+          repository.insertSessionTimelineEvent(
+            SessionTimelineEventEntity(
+              sessionId = sessionId,
+              gamePackageName = game.packageName,
+              gameName = game.appName,
+              eventType = SessionTimelineEventType.MONITORING_STARTED.code,
+              title = if (isIndo) "Monitoring Sesi Aktif" else "Session Monitoring Started",
+              detail = "${ramFreeMb} MB RAM free • ${String.format(Locale.US, "%.1f°C", safeTemp)}",
+              timestampMs = nowMs + 10L,
+              batteryPercent = snap.batteryInfo.levelPercent,
+              batteryTempC = safeTemp,
+              ramFreeMb = ramFreeMb,
+              ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+              networkStatus = netSummary,
+              thermalStatusCode = snap.thermalStatusCode,
+            )
+          )
+        }
+      }
+    }
   }
 
   fun completePendingLaunch() {
@@ -679,6 +844,9 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
         val peakTemp = maxOf(active.peakTempC, snap.batteryInfo.temperatureC.sanitizeFinite(30f))
         val ramFreeMb = (snap.memoryInfo.availBytes / (1024L * 1024L)).coerceAtLeast(0L)
         val avgUiFps = snap.uiFps.takeIf { it > 0f }
+        val netSummary =
+          if (snap.networkSnapshot.isConnected) "${snap.networkSnapshot.transportType} (${snap.networkSnapshot.networkSubType})"
+          else "Offline"
         repository.recordSession(
           GameSessionEntity(
             gamePackageName = active.packageName,
@@ -692,9 +860,26 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
             peakTempC = peakTemp,
           )
         )
+        repository.insertSessionTimelineEvent(
+          SessionTimelineEventEntity(
+            sessionId = active.sessionId,
+            gamePackageName = active.packageName,
+            gameName = active.gameName,
+            eventType = SessionTimelineEventType.SESSION_ENDED.code,
+            title = if (isIndo) "Sesi Selesai" else "Session Ended",
+            detail = "${TimeAndSizeFormatters.formatDurationCompact(durationMs, isIndo)} • Peak ${String.format(Locale.US, "%.1f°C", peakTemp)}",
+            timestampMs = endedAt,
+            batteryPercent = snap.batteryInfo.levelPercent,
+            batteryTempC = snap.batteryInfo.temperatureC.sanitizeFinite(30f),
+            ramFreeMb = ramFreeMb,
+            ramUsedPercent = snap.memoryInfo.usedPercent.sanitizeFinite(0f),
+            networkStatus = netSummary,
+            thermalStatusCode = snap.thermalStatusCode,
+          )
+        )
         val conditions = buildList {
           if (peakTemp >= 41f || snap.thermalStatusCode >= 2) {
-            add(if (isIndo) "Suhu puncak meningkat (${String.format(java.util.Locale.US, "%.1f°C", peakTemp)})" else "Elevated peak temp (${String.format(java.util.Locale.US, "%.1f°C", peakTemp)})")
+            add(if (isIndo) "Suhu puncak meningkat (${String.format(Locale.US, "%.1f°C", peakTemp)})" else "Elevated peak temp (${String.format(Locale.US, "%.1f°C", peakTemp)})")
           }
           if (ramFreeMb < 700L || snap.memoryInfo.lowMemory) {
             add(if (isIndo) "Tekanan RAM ($ramFreeMb MB bebas)" else "Low RAM headroom ($ramFreeMb MB free)")
@@ -725,14 +910,98 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
             batteryEndPercent = snap.batteryInfo.levelPercent,
             peakTempC = peakTemp,
             ramAvailEndMb = ramFreeMb,
-            networkSummary = "${snap.networkSnapshot.transportType} (${snap.networkSnapshot.networkSubType})",
+            networkSummary = netSummary,
             detectedConditions = conditions,
             recommendations = recSummary,
           )
         )
+
+        val sessionEvents =
+          sessionTimelineEvents.value.filter {
+            it.gamePackageName == active.packageName && it.timestampMs in active.startedAtMs..endedAt
+          }
+        val perfWarnCount =
+          sessionEvents.count {
+            it.eventType == SessionTimelineEventType.THERMAL_WARNING.code ||
+              it.eventType == SessionTimelineEventType.MEMORY_PRESSURE.code ||
+              it.eventType == SessionTimelineEventType.FPS_DROP.code
+          }
+        val netEvtCount =
+          sessionEvents.count { it.eventType == SessionTimelineEventType.NETWORK_CHANGED.code }
+        val capturedMedia =
+          runCatching { DrxMediaStorageManager.loadGalleryItems(appContext) }
+            .getOrDefault(emptyList())
+            .filter { it.timestampMs >= active.startedAtMs }
+
+        _latestSessionRecap.value =
+          SessionRecapSummary(
+            sessionId = active.sessionId,
+            gameName = active.gameName,
+            packageName = active.packageName,
+            startedAtMs = active.startedAtMs,
+            endedAtMs = endedAt,
+            durationMs = durationMs,
+            profileUsed = active.profileUsed,
+            avgUiFps = avgUiFps,
+            performanceWarningsCount = perfWarnCount,
+            networkEventsCount = netEvtCount,
+            batteryStartPercent = active.batteryStartPercent,
+            batteryEndPercent = snap.batteryInfo.levelPercent,
+            peakTempC = peakTemp,
+            recordingCount = capturedMedia.count { it.type == MediaItemType.VIDEO },
+            screenshotCount = capturedMedia.count { it.type == MediaItemType.SCREENSHOT },
+          )
       } catch (_: Throwable) {
       }
     }
+  }
+
+  fun dismissSessionRecap() {
+    _latestSessionRecap.value = null
+  }
+
+  fun buildLatestSessionRecapFallback(
+    sessions: List<GameSessionEntity>,
+    timelineEvents: List<com.example.data.db.SessionTimelineEventEntity>,
+    reports: List<SessionReportEntity>,
+  ): SessionRecapSummary? {
+    _latestSessionRecap.value?.let { return it }
+    val latest = sessions.maxByOrNull { it.endedAt } ?: return null
+    val matchingReport =
+      reports.firstOrNull {
+        it.gamePackageName == latest.gamePackageName && it.endedAtMs == latest.endedAt
+      }
+    val eventsInSession =
+      timelineEvents.filter {
+        it.gamePackageName == latest.gamePackageName && it.timestampMs in latest.startedAt..latest.endedAt
+      }
+    val perfWarnCount =
+      eventsInSession.count {
+        it.eventType == SessionTimelineEventType.THERMAL_WARNING.code ||
+          it.eventType == SessionTimelineEventType.MEMORY_PRESSURE.code ||
+          it.eventType == SessionTimelineEventType.FPS_DROP.code
+      }
+    val netEvtCount =
+      eventsInSession.count { it.eventType == SessionTimelineEventType.NETWORK_CHANGED.code }
+    val profile =
+      GamingProfile.entries.find { it.id == latest.profileUsed } ?: GamingProfile.BALANCED
+    return SessionRecapSummary(
+      sessionId = "${latest.gamePackageName}_${latest.startedAt}",
+      gameName = latest.gameName,
+      packageName = latest.gamePackageName,
+      startedAtMs = latest.startedAt,
+      endedAtMs = latest.endedAt,
+      durationMs = latest.durationMs,
+      profileUsed = profile,
+      avgUiFps = matchingReport?.avgUiFpsOrNull,
+      performanceWarningsCount = perfWarnCount,
+      networkEventsCount = netEvtCount,
+      batteryStartPercent = latest.batteryStartPercent,
+      batteryEndPercent = latest.batteryEndPercent,
+      peakTempC = latest.peakTempC,
+      recordingCount = 0,
+      screenshotCount = 0,
+    )
   }
 
   fun performSmartBoost(activity: Activity?) {
@@ -743,8 +1012,25 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
         val currentPrefs = prefs.prefsFlow.first()
         val config = currentPrefs.resolveProfileConfig()
         val isIndo = currentPrefs.language == LanguageMode.INDONESIAN
-        delay(360L)
+        val animateBoost = currentPrefs.animationsEnabled
+
+        if (animateBoost) {
+          _boostStageIndex.value = 0
+          _boostReadyToPlay.value = false
+          _boostAnimationVisible.value = true
+          withContext(Dispatchers.IO) { SmartStorageInspectorEngine.clearDrxCache(appContext) }
+          delay(360L)
+          _boostStageIndex.value = 1
+        } else {
+          withContext(Dispatchers.IO) { SmartStorageInspectorEngine.clearDrxCache(appContext) }
+        }
+
         val report = tweaksManager.performSmartBoost(telemetryMonitor, config, activity, isIndo)
+        if (animateBoost) {
+          delay(340L)
+          _boostStageIndex.value = 2
+        }
+
         _lastBoostReport.value = report
         prefs.recordBoost(report.timestampMs)
         _dndEnabled.value = tweaksManager.isDndEnabled()
@@ -753,11 +1039,23 @@ class DrxMainViewModel(application: Application) : AndroidViewModel(application)
         if (currentPrefs.boostNotificationsEnabled) {
           postBoostNotification(report, isIndo)
         }
+
+        if (animateBoost) {
+          delay(280L)
+          _boostReadyToPlay.value = true
+          delay(620L)
+          _boostAnimationVisible.value = false
+        }
       } catch (_: Throwable) {
+        _boostAnimationVisible.value = false
       } finally {
         _isBoosting.value = false
       }
     }
+  }
+
+  fun dismissBoostAnimation() {
+    _boostAnimationVisible.value = false
   }
 
   fun dismissBoostReport() {

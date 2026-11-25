@@ -303,24 +303,33 @@ fun GameActivityCenterScreen(
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         DrxGlassCard(
           modifier = Modifier.weight(1f),
-          onClick = { onNavigateRoute(ToolRoutes.NOTIFICATION_INSIGHTS) },
+          onClick = { onNavigateRoute(ToolRoutes.SESSION_RECAP) },
         ) {
-          Text(strings.notificationInsightsTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+          Text(strings.sessionRecapTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
           Spacer(Modifier.height(2.dp))
-          Text(if (isIndo) "Grafik & jam puncak" else "Charts & peak hours", style = DrxTypographyTokens.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(if (isIndo) "Ringkasan sesi terakhir" else "Latest session summary", style = DrxTypographyTokens.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DrxGlassCard(
           modifier = Modifier.weight(1f),
-          onClick = { onNavigateRoute(ToolRoutes.UPDATE_CENTER) },
+          onClick = { onNavigateRoute(ToolRoutes.NOTIFICATION_INSIGHTS) },
         ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = drxColors.electricBlue, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(strings.updateCenterTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-          }
+          Text(strings.notificationInsightsTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
           Spacer(Modifier.height(2.dp))
-          Text(if (isIndo) "Cek & verifikasi APK" else "Check & verify APK", style = DrxTypographyTokens.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(if (isIndo) "Grafik & jam puncak" else "Charts & peak hours", style = DrxTypographyTokens.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+      }
+      Spacer(Modifier.height(10.dp))
+      DrxGlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onNavigateRoute(ToolRoutes.UPDATE_CENTER) },
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = drxColors.electricBlue, modifier = Modifier.size(16.dp))
+          Spacer(Modifier.width(6.dp))
+          Text(strings.updateCenterTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(if (isIndo) "Cek & verifikasi APK" else "Check & verify APK", style = DrxTypographyTokens.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
   }

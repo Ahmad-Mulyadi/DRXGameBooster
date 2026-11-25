@@ -18,6 +18,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.example.data.model.MediaGalleryItem
 import com.example.data.model.MediaItemType
+import com.example.data.model.ScreenshotFormat
 import com.example.data.model.StorageGallerySummary
 import java.io.File
 
@@ -121,13 +122,22 @@ object DrxMediaStorageManager {
     bitmap: Bitmap,
     fileName: String,
     safTreeUri: String = "",
+    format: ScreenshotFormat = ScreenshotFormat.PNG,
   ): MediaGalleryItem? {
+    if (bitmap.width <= 0 || bitmap.height <= 0) return null
+    if (ScreenshotEngine.isBlankOrBlackBitmap(bitmap)) return null
+
+    val compressFormat =
+      if (format == ScreenshotFormat.JPEG) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG
+    val compressQuality = if (format == ScreenshotFormat.JPEG) 95 else 100
+    val mimeType = format.mimeType
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       try {
         val values =
           ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
             put(MediaStore.Images.Media.RELATIVE_PATH, MEDIASTORE_IMAGE_REL_PATH)
             put(MediaStore.Images.Media.WIDTH, bitmap.width)
             put(MediaStore.Images.Media.HEIGHT, bitmap.height)
@@ -135,14 +145,23 @@ object DrxMediaStorageManager {
           }
         val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
         if (uri != null) {
-          context.contentResolver.openOutputStream(uri)?.use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+          val compressed =
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+              bitmap.compress(compressFormat, compressQuality, out).also { out.flush() }
+            } ?: false
+          if (!compressed) {
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            return null
           }
           values.clear()
           values.put(MediaStore.Images.Media.IS_PENDING, 0)
           context.contentResolver.update(uri, values, null, null)
           val size = queryFileSize(context, uri)
-          mirrorFileToSafIfSet(context, safTreeUri, SUBFOLDER_SCREENSHOT, fileName, "image/png", uri)
+          if (size <= 0L) {
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            return null
+          }
+          mirrorFileToSafIfSet(context, safTreeUri, SUBFOLDER_SCREENSHOT, fileName, mimeType, uri)
           return MediaGalleryItem(
             uriString = uri.toString(),
             displayName = fileName,
@@ -160,7 +179,13 @@ object DrxMediaStorageManager {
 
     return try {
       val file = File(legacyScreenshotDir(context), fileName)
-      file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+      val ok = file.outputStream().use {
+        bitmap.compress(compressFormat, compressQuality, it).also { _ -> it.flush() }
+      }
+      if (!ok || !file.exists() || file.length() <= 0L) {
+        runCatching { file.delete() }
+        return null
+      }
       val uri =
         runCatching {
           FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
@@ -341,7 +366,11 @@ object DrxMediaStorageManager {
 
     if (items.isEmpty()) {
       legacyScreenshotDir(context)
-        .listFiles { f -> f.isFile && (f.name.endsWith(".png", true) || f.name.endsWith(".jpg", true)) && f.length() > 0L }
+        .listFiles { f ->
+          f.isFile &&
+            (f.name.endsWith(".png", true) || f.name.endsWith(".jpg", true) || f.name.endsWith(".jpeg", true)) &&
+            f.length() > 0L
+        }
         ?.forEach { f ->
           val uri = runCatching { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f) }.getOrNull() ?: Uri.fromFile(f)
           items +=
@@ -432,7 +461,13 @@ object DrxMediaStorageManager {
   fun renameMediaItem(context: Context, item: MediaGalleryItem, newBaseName: String): Boolean {
     val clean = newBaseName.trim().replace(Regex("[^A-Za-z0-9._-]"), "_")
     if (clean.isBlank()) return false
-    val ext = if (item.type == MediaItemType.VIDEO) ".mp4" else ".png"
+    val ext =
+      when {
+        item.type == MediaItemType.VIDEO -> ".mp4"
+        item.displayName.endsWith(".jpg", true) -> ".jpg"
+        item.displayName.endsWith(".jpeg", true) -> ".jpeg"
+        else -> ".png"
+      }
     val finalName = if (clean.endsWith(ext, true)) clean else "$clean$ext"
     return try {
       val values = ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, finalName) }
@@ -443,7 +478,12 @@ object DrxMediaStorageManager {
   }
 
   fun buildShareIntent(context: Context, item: MediaGalleryItem): Intent {
-    val mime = if (item.type == MediaItemType.VIDEO) "video/mp4" else "image/png"
+    val mime =
+      when {
+        item.type == MediaItemType.VIDEO -> "video/mp4"
+        item.displayName.endsWith(".jpg", true) || item.displayName.endsWith(".jpeg", true) -> "image/jpeg"
+        else -> "image/png"
+      }
     return Intent(Intent.ACTION_SEND).apply {
       type = mime
       putExtra(Intent.EXTRA_STREAM, item.uriString.toUri())

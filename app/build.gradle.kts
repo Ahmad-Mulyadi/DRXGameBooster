@@ -15,8 +15,8 @@ android {
     applicationId = "com.derrex.gameturbo"
     minSdk = 24
     targetSdk = 36
-    versionCode = 7
-    versionName = "1.20.0"
+    versionCode = 8
+    versionName = "1.25.5"
     buildConfigField("String", "BUILD_DATE", "\"${LocalDate.now()}\"")
     val defaultUpdateUrl =
       (System.getenv("DRX_UPDATE_MANIFEST_URL")

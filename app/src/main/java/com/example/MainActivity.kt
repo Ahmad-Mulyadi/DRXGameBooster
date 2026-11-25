@@ -93,30 +93,44 @@ import com.example.ui.screens.DeviceMonitorScreen
 import com.example.ui.screens.DiagnosticHistoryScreen
 import com.example.ui.screens.DisplayTouchScreen
 import com.example.ui.screens.DownloadCenterScreen
+import com.example.ui.screens.DrxBoostAnimationOverlay
 import com.example.ui.screens.DrxCinematicIntroOverlay
 import com.example.ui.screens.FloatingSidebarScreen
 import com.example.ui.screens.GameActivityCenterScreen
+import com.example.ui.screens.GameCompatibilityScreen
 import com.example.ui.screens.GameDetailStatsScreen
 import com.example.ui.screens.GameEventTrackerScreen
 import com.example.ui.screens.GameLaunchOverlay
 import com.example.ui.screens.GameNotificationViewerScreen
+import com.example.ui.screens.GameProfileAutomationScreen
+import com.example.ui.screens.GameResourceReportScreen
 import com.example.ui.screens.GamesScreen
+import com.example.ui.screens.GamingFocusModeScreen
 import com.example.ui.screens.GamingHealthScreen
 import com.example.ui.screens.LagDetectiveScreen
 import com.example.ui.screens.MediaGalleryScreen
 import com.example.ui.screens.NetworkToolsScreen
 import com.example.ui.screens.NotificationInsightsScreen
+import com.example.ui.screens.PreGameCheckModal
+import com.example.ui.screens.PreGameCheckScreen
 import com.example.ui.screens.ProfileHubScreen
 import com.example.ui.screens.ProfilesScreen
 import com.example.ui.screens.ScreenRecorderScreen
+import com.example.ui.screens.ScreenshotScreen
 import com.example.ui.screens.SessionIntelligenceScreen
+import com.example.ui.screens.SessionRecapModal
+import com.example.ui.screens.SessionRecapScreen
+import com.example.ui.screens.SessionTimelineScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SmartStorageInspectorScreen
 import com.example.ui.screens.SmartUpdateOfferModal
 import com.example.ui.screens.SoundCenterScreen
 import com.example.ui.screens.StabilityWatchScreen
 import com.example.ui.screens.StatisticsScreen
+import com.example.ui.screens.ThermalGuardScreen
 import com.example.ui.screens.ToolRoutes
 import com.example.ui.screens.ToolsHubScreen
+import com.example.ui.screens.TouchResponseTestScreen
 import com.example.ui.screens.UpdateCenterScreen
 import com.example.ui.screens.UpdateLogScreen
 import com.example.ui.screens.UtilitiesScreen
@@ -268,6 +282,12 @@ fun DrxRootShell(
   val allNotifications by notificationsViewModel.allNotifications.collectAsStateWithLifecycle()
   val unreadGameNotifsCount = remember(allNotifications) { allNotifications.count { !it.isRead } }
   val updateUiState by updateViewModel.uiState.collectAsStateWithLifecycle()
+  val preGameCheckReport by mainViewModel.preGameCheckReport.collectAsStateWithLifecycle()
+  val pendingPreGameLaunch by mainViewModel.pendingPreGameLaunch.collectAsStateWithLifecycle()
+  val boostAnimVisible by mainViewModel.boostAnimationVisible.collectAsStateWithLifecycle()
+  val boostStageIndex by mainViewModel.boostStageIndex.collectAsStateWithLifecycle()
+  val boostReadyToPlay by mainViewModel.boostReadyToPlay.collectAsStateWithLifecycle()
+  val latestSessionRecap by mainViewModel.latestSessionRecap.collectAsStateWithLifecycle()
 
   val customWallpaperBitmap by
     produceState<ImageBitmap?>(initialValue = null, key1 = prefs.customWallpaperPath) {
@@ -291,6 +311,13 @@ fun DrxRootShell(
   var showIntro by remember { mutableStateOf(true) }
   LaunchedEffect(Unit) {
     UpdateCheckWorker.enqueuePeriodicCheck(context)
+  }
+
+  LaunchedEffect(prefs.preferredDisplayModeId, activity) {
+    val act = activity
+    if (act != null && prefs.preferredDisplayModeId > 0) {
+      mainViewModel.tweaksManager.applyPreferredDisplayMode(act, prefs.preferredDisplayModeId)
+    }
   }
 
   LaunchedEffect(pendingDeepRoute) {
@@ -472,6 +499,7 @@ fun DrxRootShell(
                 systemUsageMap = systemGameUsageMap,
                 notificationCountsByPackage = notificationCountsByPackage,
                 onOpenGameStats = { pkg -> navController.navigate(MainRoutes.gameDetailStatsRoute(pkg)) },
+                onOpenAutomation = { pkg -> navController.navigate("${ToolRoutes.PROFILE_AUTOMATION}/${Uri.encode(pkg)}") },
               )
             }
             composable(MainRoutes.TOOLS) {
@@ -588,6 +616,7 @@ fun DrxRootShell(
                 viewModel = mainViewModel,
                 onBack = { navController.popBackStack() },
                 onOpenProRecorder = { navController.navigate(ToolRoutes.SCREEN_RECORDER) },
+                onOpenTouchTest = { navController.navigate(ToolRoutes.TOUCH_TEST) },
               )
             }
             composable(ToolRoutes.SOUND) {
@@ -674,6 +703,7 @@ fun DrxRootShell(
               MediaGalleryScreen(
                 diagnosticsViewModel = diagnosticsViewModel,
                 onBack = { navController.popBackStack() },
+                onOpenStorageInspector = { navController.navigate(ToolRoutes.STORAGE_INSPECTOR) },
               )
             }
             composable(ToolRoutes.DIAGNOSTIC_HISTORY) {
@@ -741,11 +771,99 @@ fun DrxRootShell(
                 viewModel = mainViewModel,
                 onOpenGameStats = { pkg -> navController.navigate(MainRoutes.gameDetailStatsRoute(pkg)) },
                 onBack = { navController.popBackStack() },
+                onOpenSessionRecap = { navController.navigate(ToolRoutes.SESSION_RECAP) },
               )
             }
             composable(ToolRoutes.STABILITY_WATCH) {
               StabilityWatchScreen(
                 diagnosticsViewModel = diagnosticsViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.SESSION_TIMELINE) {
+              SessionTimelineScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.RESOURCE_REPORT) {
+              GameResourceReportScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.PROFILE_AUTOMATION) {
+              GameProfileAutomationScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(
+              route = "${ToolRoutes.PROFILE_AUTOMATION}/{packageName}",
+              arguments = listOf(navArgument("packageName") { type = NavType.StringType }),
+            ) { entry ->
+              val pkg = Uri.decode(entry.arguments?.getString("packageName").orEmpty())
+              GameProfileAutomationScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+                initialPackageName = pkg.takeIf { it.isNotBlank() },
+              )
+            }
+            composable(ToolRoutes.PRE_GAME_CHECK) {
+              PreGameCheckScreen(
+                viewModel = mainViewModel,
+                onOpenTool = { r -> navController.navigate(r) },
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.TOUCH_TEST) {
+              TouchResponseTestScreen(
+                language = prefs.language,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.FOCUS_MODE) {
+              GamingFocusModeScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.SCREENSHOT) {
+              ScreenshotScreen(
+                diagnosticsViewModel = diagnosticsViewModel,
+                onOpenGallery = { navController.navigate(ToolRoutes.MEDIA_GALLERY) },
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.THERMAL_GUARD) {
+              ThermalGuardScreen(
+                viewModel = mainViewModel,
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.SESSION_RECAP) {
+              SessionRecapScreen(
+                viewModel = mainViewModel,
+                onOpenTimeline = { navController.navigate(ToolRoutes.SESSION_TIMELINE) },
+                onOpenGallery = { navController.navigate(ToolRoutes.MEDIA_GALLERY) },
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.STORAGE_INSPECTOR) {
+              SmartStorageInspectorScreen(
+                diagnosticsViewModel = diagnosticsViewModel,
+                games = games,
+                onOpenGallery = { navController.navigate(ToolRoutes.MEDIA_GALLERY) },
+                onOpenRecorder = { navController.navigate(ToolRoutes.SCREEN_RECORDER) },
+                onBack = { navController.popBackStack() },
+              )
+            }
+            composable(ToolRoutes.COMPATIBILITY_CHECK) {
+              GameCompatibilityScreen(
+                diagnosticsViewModel = diagnosticsViewModel,
+                telemetry = telemetry,
+                permissionStates = permissionStates,
+                games = games,
                 onBack = { navController.popBackStack() },
               )
             }
@@ -828,6 +946,46 @@ fun DrxRootShell(
           }
           navController.navigate(MainRoutes.UPDATE_LOG) { launchSingleTop = true }
         },
+      )
+    }
+
+    val pendingGame = pendingPreGameLaunch
+    val checkReport = preGameCheckReport
+    if (pendingGame != null && checkReport != null) {
+      PreGameCheckModal(
+        game = pendingGame,
+        report = checkReport,
+        isIndo = prefs.language == LanguageMode.INDONESIAN,
+        onPlayAnyway = { mainViewModel.confirmPreGameLaunch(activity) },
+        onDismiss = { mainViewModel.dismissPreGameModal() },
+        onDisablePrompt = {
+          mainViewModel.setPreGameCheckBeforeLaunch(false)
+          mainViewModel.confirmPreGameLaunch(activity)
+        },
+      )
+    }
+
+    AnimatedVisibility(
+      visible = boostAnimVisible,
+      enter = fadeIn(tween(150)),
+      exit = fadeOut(tween(220)),
+    ) {
+      DrxBoostAnimationOverlay(
+        stageIndex = boostStageIndex,
+        isReadyToPlay = boostReadyToPlay,
+        animationsEnabled = prefs.animationsEnabled,
+        isIndo = prefs.language == LanguageMode.INDONESIAN,
+        onSkip = { mainViewModel.dismissBoostAnimation() },
+      )
+    }
+
+    latestSessionRecap?.let { recap ->
+      SessionRecapModal(
+        recap = recap,
+        isIndo = prefs.language == LanguageMode.INDONESIAN,
+        onOpenTimeline = { navController.navigate(ToolRoutes.SESSION_TIMELINE) },
+        onOpenGallery = { navController.navigate(ToolRoutes.MEDIA_GALLERY) },
+        onDismiss = { mainViewModel.dismissSessionRecap() },
       )
     }
   }

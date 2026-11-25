@@ -371,12 +371,22 @@ interface AppStrings {
   val preGameCheckTitle: String
   val preGameCheckSub: String
   val playAnywayBtn: String
-  val touchTestTitle: String
-  val touchTestSub: String
+  val touchResponseTestTitle: String
+  val touchResponseTestSub: String
   val displayIntelTitle: String
   val displayIntelSub: String
   val focusModeTitle: String
   val focusModeSub: String
+  val screenshotStudioTitle: String
+  val screenshotStudioSub: String
+  val thermalGuardTitle: String
+  val thermalGuardSub: String
+  val sessionRecapTitle: String
+  val sessionRecapSub: String
+  val storageInspectorTitle: String
+  val storageInspectorSub: String
+  val compatibilityCheckTitle: String
+  val compatibilityCheckSub: String
 
   fun profileName(profile: GamingProfile): String =
     when (profile) {
@@ -766,12 +776,22 @@ object IndonesianStrings : AppStrings {
   override val preGameCheckTitle = "Pre-Game Check"
   override val preGameCheckSub = "Cek kesiapan storage, thermal, baterai, jaringan & izin"
   override val playAnywayBtn = "Mainkan Sekarang"
-  override val touchTestTitle = "Touch Response Test"
-  override val touchTestSub = "Tap, multi-touch, tracking, gestur & tantangan akurasi sentuh"
+  override val touchResponseTestTitle = "Touch Response Test"
+  override val touchResponseTestSub = "Tap, multi-touch, tracking, gestur & tantangan akurasi sentuh"
   override val displayIntelTitle = "Display Intelligence"
   override val displayIntelSub = "Resolusi, DPI, mode refresh rate layar, ukuran fisik & HDR"
   override val focusModeTitle = "Gaming Focus Mode"
   override val focusModeSub = "Timer fokus, Priority DND (aman untuk alarm) & screen timeout"
+  override val screenshotStudioTitle = "DRX Screenshot Studio"
+  override val screenshotStudioSub = "Mode Jendela DRX & Layar Penuh (PNG/JPEG) tanpa frame hitam"
+  override val thermalGuardTitle = "DRX Thermal Guard"
+  override val thermalGuardSub = "Status suhu 4-tingkat, riwayat thermal & panduan pendinginan"
+  override val sessionRecapTitle = "DRX Session Recap"
+  override val sessionRecapSub = "Ringkasan durasi, UI FPS, baterai, suhu & media sesi bermain"
+  override val storageInspectorTitle = "DRX Storage Inspector"
+  override val storageInspectorSub = "Rincian storage perangkat, game, media & pembersih cache DRX"
+  override val compatibilityCheckTitle = "Game Compatibility Check"
+  override val compatibilityCheckSub = "Cek kesiapan Android, Display.Mode, MediaProjection & peluncur"
 }
 
 object EnglishStrings : AppStrings {
@@ -1132,12 +1152,22 @@ object EnglishStrings : AppStrings {
   override val preGameCheckTitle = "Pre-Game Check"
   override val preGameCheckSub = "Storage, battery, thermal, network, overlay & telemetry check"
   override val playAnywayBtn = "Play Anyway"
-  override val touchTestTitle = "Touch Response Test"
-  override val touchTestSub = "Tap, multi-touch, tracking, gesture & accuracy target test"
+  override val touchResponseTestTitle = "Touch Response Test"
+  override val touchResponseTestSub = "Tap, multi-touch, tracking, gesture & accuracy target test"
   override val displayIntelTitle = "Display Intelligence"
   override val displayIntelSub = "Resolution, density, supported Display.Mode Hz, size & HDR"
   override val focusModeTitle = "Gaming Focus Mode"
   override val focusModeSub = "Focus timer, Priority DND (alarm-safe) & screen timeout"
+  override val screenshotStudioTitle = "DRX Screenshot Studio"
+  override val screenshotStudioSub = "DRX App Window & Full-Screen (PNG/JPEG) with blank-frame guard"
+  override val thermalGuardTitle = "DRX Thermal Guard"
+  override val thermalGuardSub = "4-tier thermal status, session peak chart & safe cooling tips"
+  override val sessionRecapTitle = "DRX Session Recap"
+  override val sessionRecapSub = "Post-session playtime, UI FPS, warnings, battery & captures"
+  override val storageInspectorTitle = "DRX Storage Inspector"
+  override val storageInspectorSub = "Device storage breakdown, game apps, media & DRX cache cleaner"
+  override val compatibilityCheckTitle = "Game Compatibility Check"
+  override val compatibilityCheckSub = "Verify Android OS, Display.Mode, MediaProjection & game launchers"
 }
 
 fun stringsFor(mode: LanguageMode): AppStrings =

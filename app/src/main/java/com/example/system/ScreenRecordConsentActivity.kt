@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.example.data.model.ScreenshotFormat
 import com.example.data.prefs.DrxPreferences
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -25,19 +26,26 @@ class ScreenRecordConsentActivity : ComponentActivity() {
   companion object {
     const val EXTRA_CAPTURE_MODE = "extra_capture_mode"
     const val EXTRA_COUNTDOWN_SEC = "extra_countdown_sec"
+    const val EXTRA_SCREENSHOT_FORMAT = "extra_screenshot_format"
     const val MODE_RECORD = "record"
     const val MODE_SCREENSHOT = "screenshot"
   }
 
   private var captureMode: String = MODE_RECORD
   private var requestedCountdownSec: Int = 3
+  private var requestedScreenshotFormat: ScreenshotFormat = ScreenshotFormat.PNG
 
   private val projectionLauncher =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
       val data = result.data
       if (result.resultCode == Activity.RESULT_OK && data != null) {
         if (captureMode == MODE_SCREENSHOT) {
-          ScreenRecorderService.captureScreenshot(this, result.resultCode, data)
+          ScreenRecorderService.captureScreenshot(
+            context = this,
+            resultCode = result.resultCode,
+            data = data,
+            format = requestedScreenshotFormat,
+          )
           Toast.makeText(this, "Capturing DRX Screenshot...", Toast.LENGTH_SHORT).show()
         } else {
           val state = ScreenRecorderStateHolder.state.value
@@ -70,6 +78,10 @@ class ScreenRecordConsentActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     captureMode = intent?.getStringExtra(EXTRA_CAPTURE_MODE) ?: MODE_RECORD
+    requestedScreenshotFormat =
+      runCatching {
+        ScreenshotFormat.valueOf(intent?.getStringExtra(EXTRA_SCREENSHOT_FORMAT) ?: ScreenshotFormat.PNG.name)
+      }.getOrDefault(ScreenshotFormat.PNG)
     requestedCountdownSec =
       if (intent?.hasExtra(EXTRA_COUNTDOWN_SEC) == true) {
         intent.getIntExtra(EXTRA_COUNTDOWN_SEC, 3).coerceIn(0, 10)
@@ -77,6 +89,13 @@ class ScreenRecordConsentActivity : ComponentActivity() {
         runCatching { runBlocking { DrxPreferences(applicationContext).prefsFlow.first().recorderCountdownSec } }
           .getOrDefault(3)
       }
+
+    // If recording is already running with an active MediaProjection, capture screenshot directly without re-prompting
+    if (captureMode == MODE_SCREENSHOT && ScreenRecorderStateHolder.state.value.isRecording) {
+      ScreenRecorderService.captureScreenshotDuringRecording(this, requestedScreenshotFormat)
+      finishWithoutTransition()
+      return
+    }
 
     val needed = buildList {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

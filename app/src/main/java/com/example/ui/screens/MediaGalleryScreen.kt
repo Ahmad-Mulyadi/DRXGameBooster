@@ -108,6 +108,7 @@ private enum class GallerySort {
 fun MediaGalleryScreen(
   diagnosticsViewModel: DrxDiagnosticsViewModel,
   onBack: () -> Unit,
+  onOpenStorageInspector: () -> Unit = {},
 ) {
   BackHandler(onBack = onBack)
   val context = LocalContext.current
@@ -276,6 +277,12 @@ fun MediaGalleryScreen(
               modifier = Modifier.weight(1f).testTag("gallery_open_folder_button"),
             )
           }
+          Spacer(Modifier.height(8.dp))
+          DrxSecondaryButton(
+            label = strings.storageInspectorTitle,
+            onClick = onOpenStorageInspector,
+            modifier = Modifier.fillMaxWidth().height(42.dp).testTag("media_open_storage_inspector_btn"),
+          )
         }
       }
     }

@@ -85,12 +85,12 @@ class DrxNotificationAndUpdateTests {
   }
 
   @Test
-  fun `version 1_20_0 build config and update catalog are synchronized`() {
-    assertEquals("1.20.0", BuildConfig.VERSION_NAME)
-    assertEquals(7, BuildConfig.VERSION_CODE)
+  fun `version 1_25_5 build config and update catalog are synchronized`() {
+    assertEquals("1.25.5", BuildConfig.VERSION_NAME)
+    assertEquals(8, BuildConfig.VERSION_CODE)
     assertEquals("com.derrex.gameturbo", BuildConfig.APPLICATION_ID)
-    assertEquals("1.20.0", DrxUpdateCatalog.latestVersion)
-    assertEquals("1.20.0", DrxUpdateCatalog.entries.first().versionNumber)
+    assertEquals("1.25.5", DrxUpdateCatalog.latestVersion)
+    assertEquals("1.25.5", DrxUpdateCatalog.entries.first().versionNumber)
   }
 
   @Test
@@ -399,7 +399,7 @@ class DrxNotificationAndUpdateTests {
     val manager = DrxUpdateManager(context)
     val bundled = manager.loadBundledManifests()
     assertTrue(bundled.isNotEmpty())
-    assertEquals("1.20.0", bundled.first().versionName)
+    assertEquals("1.25.5", bundled.first().versionName)
 
     val invalidFile = File(context.cacheDir, "invalid_update.apk")
     val incompleteZip = File(context.cacheDir, "incomplete_update.apk")
@@ -674,9 +674,9 @@ class DrxNotificationAndUpdateTests {
       """
       {
         "appId": "${BuildConfig.APPLICATION_ID}",
-        "versionName": "1.9.0",
+        "versionName": "1.25.5",
         "versionCode": ${BuildConfig.VERSION_CODE},
-        "apkFileName": "DRX-GAME-TURBO-PRO-v1.9.0.apk",
+        "apkFileName": "DRX-GAME-TURBO-PRO-v1.25.5.apk",
         "downloadUrl": "https://updates.example.com/drx/DRX.apk",
         "developerWarning": "Developer Warning: Replacement APK changed checksum without raising versionCode."
       }

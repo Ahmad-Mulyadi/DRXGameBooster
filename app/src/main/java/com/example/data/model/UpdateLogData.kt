@@ -24,6 +24,36 @@ object DrxUpdateCatalog {
   val entries: List<AppUpdateEntry> =
     listOf(
       AppUpdateEntry(
+        versionNumber = "1.25.5",
+        releaseDate = "2026-11-25",
+        title = "DRX Elite Blue Overhaul, Screenshot Studio Fix & Gaming Intelligence Suite",
+        badges = listOf(UpdateBadgeType.NEW_FEATURE, UpdateBadgeType.IMPROVEMENT, UpdateBadgeType.FIXED, UpdateBadgeType.SECURITY),
+        newFeatures =
+          listOf(
+            "Menghadirkan DRX Screenshot Studio dengan 2 mode tangkapan nyata: Mode 1 App Window (PixelCopy/Canvas) & Mode 2 Full Screen Capture (MediaProjection) dalam format PNG atau JPEG, efek flash, pratinjau layar penuh, Share, Rename, Delete, dan Capture Again.",
+            "Mengintegrasikan animasi GIF Reveal DRX borderless (berlatar #000000 tanpa bingkai kotak) ke dalam App Intro, Dedicated Boost Overlay, dan Game Launch Overlay dengan kontrol Skip serta dukungan Reduce Motion.",
+            "Menghadirkan suite fitur Gaming Intelligence lengkap: DRX Session & Lag Timeline (MEMORY_PRESSURE, RECORDING_STARTED, FPS_DROP + korelasi), Live Network Stability Monitor, DRX Thermal Guard, DRX Session Recap otomatis setelah sesi selesai, DRX Smart Storage Inspector, dan DRX Game Compatibility Check.",
+            "Melengkapi DRX Resource Report, Game Profile Automation, Pre-Game Check, Touch Response Test 5 mode, Display Intelligence (pemilih Display.Mode), Gaming Focus Mode (Priority DND aman untuk alarm), serta indikator DevicePerformanceState nyata di Dashboard.",
+            "Menyelaraskan palet DRX ELITE BLUE (#050609, #090D14, #101722, #151E2B, #087BFF, #15D9FF) di seluruh layar dan Floating Control Center.",
+          ),
+        improvements =
+          listOf(
+            "Mengonsolidasikan Floating Edge Control Center menjadi 5 tab ringkas (Home, Apps, Voice, Tools, Monitor) serta memperbarui akses cepat Screenshot di Dashboard menuju DRX Screenshot Studio.",
+            "Menambahkan dukungan NetworkCallback langsung pada Network Monitor untuk memantau transisi jaringan dan gangguan koneksi beserta disclaimer host diagnostik TCP yang transparan.",
+          ),
+        bugFixes =
+          listOf(
+            "Memperbaiki sistem Screenshot agar membuang frame hitam/kosong saat warm-up VirtualDisplay, memotong rowStride/pixelStride ImageReader secara presisi, membuat nama file unik anti-tabrakan, dan menangani surface dilindungi FLAG_SECURE secara jujur.",
+            "Memperkuat migrasi Room Database v6 (MIGRATION_5_6) untuk tabel session_timeline_events dan game_profile_automations.",
+          ),
+        performanceImprovements =
+          listOf(
+            "Mengoptimalkan animasi spring/stagger dan menonaktifkan efek dekoratif berlebih saat Reduced Motion OS atau preferensi hemat animasi aktif.",
+          ),
+        additionalNotes =
+          "Tetap 100% bebas root, tanpa AccessibilityService, tanpa modifikasi file game, serta jujur terhadap pembatasan OS Android pada CPU dan game ping privat.",
+      ),
+      AppUpdateEntry(
         versionNumber = "1.20.0",
         releaseDate = "2026-11-24",
         title = "DRX Elite Blue UI/UX Overhaul & Cinematic Brand Experience",

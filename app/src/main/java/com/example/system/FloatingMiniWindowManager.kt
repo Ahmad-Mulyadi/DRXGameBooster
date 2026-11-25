@@ -143,8 +143,8 @@ class FloatingMiniWindowManager(
 
     val bg =
       GradientDrawable().apply {
-        setColor("#EB0B0E14".toColorInt())
-        setStroke(dp(1), "#3813D9FF".toColorInt())
+        setColor("#EB090D14".toColorInt())
+        setStroke(dp(1), "#3815D9FF".toColorInt())
         cornerRadius = dp(22).toFloat()
       }
 
@@ -165,7 +165,7 @@ class FloatingMiniWindowManager(
     val titleView =
       TextView(context).apply {
         text = "DRX HUD"
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         typeface = DrxOverlayFonts.manropeSemiBold(context)
         setPadding(0, 0, dp(8), 0)
@@ -174,7 +174,7 @@ class FloatingMiniWindowManager(
     header.addView(titleView)
 
     val modeBtn =
-      hudBadgeBtn(hudDisplayMode.label, "#172030", "#F5F8FF") {
+      hudBadgeBtn(hudDisplayMode.label, "#151E2B", "#F5F8FF") {
         wakeHud()
         val next =
           when (hudDisplayMode) {
@@ -191,7 +191,7 @@ class FloatingMiniWindowManager(
     header.addView(modeBtn)
 
     header.addView(
-      hudBadgeBtn("◐", "#111722", "#929EAF") {
+      hudBadgeBtn("◐", "#101722", "#929EAF") {
         wakeHud()
         hudAlpha =
           when {
@@ -205,7 +205,7 @@ class FloatingMiniWindowManager(
     )
 
     header.addView(
-      hudBadgeBtn("✕", "#111722", "#F07878") {
+      hudBadgeBtn("✕", "#101722", "#FF5C70") {
         dismissLiveHud(notifyCallback = true)
       }
     )
@@ -222,7 +222,7 @@ class FloatingMiniWindowManager(
 
     val secondaryTxt =
       TextView(context).apply {
-        setTextColor("#DCE4F0".toColorInt())
+        setTextColor("#DCE5F2".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         typeface = DrxOverlayFonts.interRegular(context)
         fontFeatureSettings = "tnum"
@@ -529,7 +529,7 @@ class FloatingMiniWindowManager(
 
     val bg =
       GradientDrawable().apply {
-        setColor("#F4111722".toColorInt())
+        setColor("#F4101722".toColorInt())
         setStroke(dp(1), "#38087BFF".toColorInt())
         cornerRadius = dp(24).toFloat()
       }
@@ -589,7 +589,7 @@ class FloatingMiniWindowManager(
       }
     )
     header.addView(
-      headerIconBtn("✕", "#F07878") {
+      headerIconBtn("✕", "#FF5C70") {
         dismiss()
       }
     )
@@ -668,7 +668,7 @@ class FloatingMiniWindowManager(
         setPadding(0, dp(6), 0, 0)
       }
     resizeRow.addView(
-      miniPillBtn("Size -", "#172030") {
+      miniPillBtn("Size -", "#151E2B") {
         widthDp = (widthDp - 24).coerceAtLeast(220)
         params.width = dp(widthDp)
         safeUpdateViewLayout(root, params)
@@ -676,7 +676,7 @@ class FloatingMiniWindowManager(
       }
     )
     resizeRow.addView(
-      miniPillBtn("Size +", "#172030") {
+      miniPillBtn("Size +", "#151E2B") {
         widthDp = (widthDp + 24).coerceAtMost(380)
         params.width = dp(widthDp)
         safeUpdateViewLayout(root, params)
@@ -714,7 +714,7 @@ class FloatingMiniWindowManager(
   private fun buildCalculatorBody(parent: LinearLayout) {
     val dispBg =
       GradientDrawable().apply {
-        setColor("#0B0E14".toColorInt())
+        setColor("#090D14".toColorInt())
         setStroke(1, "#1AFFFFFF".toColorInt())
         cornerRadius = dp(14).toFloat()
       }
@@ -722,7 +722,7 @@ class FloatingMiniWindowManager(
       TextView(context).apply {
         text = calcDisplay
         gravity = Gravity.END or Gravity.CENTER_VERTICAL
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
         typeface = DrxOverlayFonts.manropeBold(context)
         fontFeatureSettings = "tnum"
@@ -752,7 +752,7 @@ class FloatingMiniWindowManager(
             when (key) {
               "=", "+", "-", "*", "/" -> "#087BFF"
               "C", "⌫" -> "#1E293B"
-              else -> "#172030"
+              else -> "#151E2B"
             }
           val btn =
             TextView(context).apply {
@@ -864,7 +864,7 @@ class FloatingMiniWindowManager(
     val repo = DrxRepository(DrxDatabase.getInstance(context))
     val fieldBg =
       GradientDrawable().apply {
-        setColor("#0B0E14".toColorInt())
+        setColor("#090D14".toColorInt())
         setStroke(1, "#1AFFFFFF".toColorInt())
         cornerRadius = dp(14).toFloat()
       }
@@ -955,7 +955,7 @@ class FloatingMiniWindowManager(
       }
     )
     btnRow.addView(
-      miniPillBtn(if (isIndonesian) "Selesai Ketik" else "Done", "#172030") {
+      miniPillBtn(if (isIndonesian) "Selesai Ketik" else "Done", "#151E2B") {
         params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         safeUpdateViewLayout(root, params)
       }
@@ -970,7 +970,7 @@ class FloatingMiniWindowManager(
   private fun buildTimerBody(parent: LinearLayout) {
     val label =
       TextView(context).apply {
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
         typeface = DrxOverlayFonts.manropeBold(context)
         fontFeatureSettings = "tnum"
@@ -992,7 +992,7 @@ class FloatingMiniWindowManager(
     timerActionBtn = toggleBtn
     controls.addView(toggleBtn)
     controls.addView(
-      miniPillBtn("Reset", "#172030") {
+      miniPillBtn("Reset", "#151E2B") {
         onResetTimer()
         updateLiveMetrics()
       }

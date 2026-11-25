@@ -79,6 +79,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
 import com.example.data.db.GameEntity
 import com.example.data.model.BoostReport
+import com.example.data.model.DevicePerformanceState
 import com.example.data.model.DrxUpdateCatalog
 import com.example.data.model.DrxUpdatePipelineState
 import com.example.data.model.GamingProfile
@@ -141,6 +142,8 @@ fun DashboardScreen(
   val activity = LocalActivity.current
   val context = LocalContext.current
   val recState by ScreenRecorderStateHolder.state.collectAsStateWithLifecycle()
+  val perfState by viewModel.devicePerformanceState.collectAsStateWithLifecycle()
+  val autoProfileBanner by viewModel.lastAutoAppliedProfileBanner.collectAsStateWithLifecycle()
   val isIndo = prefs.language == LanguageMode.INDONESIAN
 
   LazyColumn(
@@ -295,15 +298,37 @@ fun DashboardScreen(
                 text = strings.heroEyebrow,
                 style = MaterialTheme.typography.labelMedium,
                 color = drxColors.neonCyan,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
               )
-              DrxStatusPill(
-                text =
-                  if (prefs.gamingModeActive) strings.gamingModeActive else strings.gamingModeStandby,
-                color =
-                  if (prefs.gamingModeActive) drxColors.optimalGreen
-                  else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.alpha(heroPulse).testTag("gaming_mode_pill"),
-              )
+              Spacer(Modifier.width(8.dp))
+              Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                val (perfText, perfColor) =
+                  when (perfState) {
+                    DevicePerformanceState.READY -> strings.perfStateReady to drxColors.optimalGreen
+                    DevicePerformanceState.MONITORING -> strings.perfStateMonitoring to drxColors.neonCyan
+                    DevicePerformanceState.THERMAL_WARNING -> strings.perfStateThermalWarning to drxColors.alertCrimson
+                    DevicePerformanceState.LIMITED_MONITORING -> strings.perfStateLimitedMonitoring to drxColors.warningAmber
+                    DevicePerformanceState.DEVICE_IDLE -> strings.perfStateDeviceIdle to MaterialTheme.colorScheme.onSurfaceVariant
+                  }
+                DrxStatusPill(
+                  text = perfText,
+                  color = perfColor,
+                  modifier = Modifier.testTag("home_perf_status_pill"),
+                )
+                DrxStatusPill(
+                  text =
+                    if (prefs.gamingModeActive) strings.gamingModeActive else strings.gamingModeStandby,
+                  color =
+                    if (prefs.gamingModeActive) drxColors.optimalGreen
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.alpha(heroPulse).testTag("gaming_mode_pill"),
+                )
+              }
             }
 
             Spacer(Modifier.height(10.dp))
@@ -417,6 +442,17 @@ fun DashboardScreen(
             onDismiss = { viewModel.dismissBoostReport() },
           )
         }
+      }
+      if (!autoProfileBanner.isNullOrBlank()) {
+        Spacer(Modifier.height(8.dp))
+        DrxNotificationBanner(
+          title = strings.profileAutomationTitle,
+          body = autoProfileBanner.orEmpty(),
+          accentColor = drxColors.optimalGreen,
+          icon = Icons.Outlined.Bolt,
+          onDismiss = { viewModel.dismissAutoAppliedBanner() },
+          modifier = Modifier.testTag("home_auto_profile_banner"),
+        )
       }
     }
 
@@ -730,6 +766,24 @@ fun DashboardScreen(
           actionLabel = strings.viewAllBtn,
           onAction = onNavigateGames,
         )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          item {
+            DrxFilterPill(
+              label = strings.preGameCheckTitle,
+              selected = false,
+              onClick = { onNavigateTool(ToolRoutes.PRE_GAME_CHECK) },
+              modifier = Modifier.testTag("home_pre_game_check_chip"),
+            )
+          }
+          item {
+            DrxFilterPill(
+              label = strings.profileAutomationTitle,
+              selected = false,
+              onClick = { onNavigateTool(ToolRoutes.PROFILE_AUTOMATION) },
+              modifier = Modifier.testTag("home_automation_chip"),
+            )
+          }
+        }
 
         if (games.isEmpty()) {
           DrxGlassCard(onClick = onNavigateGames, cornerRadius = 22.dp) {
@@ -794,7 +848,7 @@ fun DashboardScreen(
                 DrxPrimaryButton(
                   label = strings.playBtn,
                   icon = Icons.Default.PlayArrow,
-                  onClick = { viewModel.startGameLaunch(game, activity) },
+                  onClick = { viewModel.requestLaunchWithPreGameCheck(game, activity) },
                   modifier =
                     Modifier
                       .fillMaxWidth()
@@ -839,13 +893,7 @@ fun DashboardScreen(
             label = "Screenshot",
             icon = Icons.Default.CameraAlt,
             active = false,
-            onClick = {
-              context.startActivity(
-                Intent(context, ScreenRecordConsentActivity::class.java).apply {
-                  putExtra(ScreenRecordConsentActivity.EXTRA_CAPTURE_MODE, ScreenRecordConsentActivity.MODE_SCREENSHOT)
-                }
-              )
-            },
+            onClick = { onNavigateTool(ToolRoutes.SCREENSHOT) },
             modifier = Modifier.weight(1f).testTag("home_quick_screenshot_button"),
           )
         }

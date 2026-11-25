@@ -68,6 +68,7 @@ import com.example.ui.theme.BorderHairline
 import com.example.ui.theme.CinematicBlack
 import com.example.ui.theme.CinematicElectricBlue
 import com.example.ui.theme.CinematicNeonCyan
+import com.example.ui.theme.DrxAnimatedGifLogo
 import com.example.ui.theme.DrxPrimaryButton
 import com.example.ui.theme.DrxSecondaryButton
 import com.example.ui.theme.DrxTypographyTokens
@@ -343,42 +344,16 @@ fun GameLaunchOverlay(
           Box(
             modifier =
               Modifier
-                .size(144.dp)
+                .size(192.dp)
                 .scale(logoScale)
-                .alpha(logoAlpha)
-                .clip(RoundedCornerShape(30.dp))
-                .border(1.dp, CinematicElectricBlue.copy(alpha = 0.35f), RoundedCornerShape(30.dp)),
+                .alpha(if (quality != LaunchAnimationQuality.MINIMAL) 1f else logoAlpha),
             contentAlignment = Alignment.Center,
           ) {
-            Image(
-              painter = painterResource(id = R.drawable.drx_logo),
+            DrxAnimatedGifLogo(
+              animationsEnabled = quality != LaunchAnimationQuality.MINIMAL,
               contentDescription = "DRX Launch Monogram",
-              contentScale = ContentScale.Crop,
               modifier = Modifier.fillMaxSize(),
             )
-
-            if (shimmerProgress in -0.1f..1.25f && quality != LaunchAnimationQuality.MINIMAL) {
-              Canvas(modifier = Modifier.fillMaxSize()) {
-                val offsetX = size.width * shimmerProgress
-                drawLine(
-                  brush =
-                    Brush.linearGradient(
-                      colors =
-                        listOf(
-                          Color.Transparent,
-                          SilverChrome.copy(alpha = 0.30f),
-                          CinematicNeonCyan.copy(alpha = 0.24f),
-                          Color.Transparent,
-                        ),
-                      start = Offset(offsetX - 50f, 0f),
-                      end = Offset(offsetX + 50f, size.height),
-                    ),
-                  start = Offset(offsetX - 30f, -20f),
-                  end = Offset(offsetX + 30f, size.height + 20f),
-                  strokeWidth = 38.dp.toPx(),
-                )
-              }
-            }
           }
 
           Spacer(Modifier.height(34.dp))

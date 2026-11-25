@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.db.CrashReportEntity
 import com.example.data.db.DrxDatabase
 import com.example.data.db.DrxRepository
+import com.example.data.db.GameEntity
 import com.example.data.db.GameSessionEntity
 import com.example.data.db.HealthCheckEntity
 import com.example.data.db.LagReportEntity
@@ -16,26 +17,33 @@ import com.example.data.db.StabilityWarningEntity
 import com.example.data.model.BuildArtifactStatus
 import com.example.data.model.BuildPipelineState
 import com.example.data.model.CrashDiagnosticAnalysis
+import com.example.data.model.GameCompatibilityReport
 import com.example.data.model.GamingHealthReport
 import com.example.data.model.LagDiagnosticReport
 import com.example.data.model.LanguageMode
 import com.example.data.model.MediaGalleryItem
 import com.example.data.model.NetworkDiagnosticResult
+import com.example.data.model.PermissionStateItem
+import com.example.data.model.SmartStorageSnapshot
 import com.example.data.model.StabilityWatchAssessment
 import com.example.data.model.StorageGallerySummary
+import com.example.data.model.SystemTelemetry
 import com.example.data.prefs.DrxPreferences
 import com.example.data.prefs.DrxUserPrefs
 import com.example.system.BuildDownloadManager
 import com.example.system.CrashAnalyzerEngine
 import com.example.system.DrxMediaStorageManager
+import com.example.system.GameCompatibilityEngine
 import com.example.system.GamingHealthEngine
 import com.example.system.LagDetectiveEngine
 import com.example.system.NetworkDiagnosticsManager
 import com.example.system.ScreenRecorderService
 import com.example.system.ScreenRecorderStateHolder
+import com.example.system.SmartStorageInspectorEngine
 import com.example.system.StabilityWatchEngine
 import com.example.system.SystemTweaksManager
 import com.example.system.TelemetryMonitor
+import com.example.system.TimeAndSizeFormatters
 import com.example.system.safeRoundToInt
 import com.example.system.sanitizeFinite
 import java.io.File
@@ -133,8 +141,71 @@ class DrxDiagnosticsViewModel(application: Application) : AndroidViewModel(appli
   private val _actionBanner = MutableStateFlow<String?>(null)
   val actionBanner: StateFlow<String?> = _actionBanner.asStateFlow()
 
+  private val _smartStorage = MutableStateFlow<SmartStorageSnapshot?>(null)
+  val smartStorage: StateFlow<SmartStorageSnapshot?> = _smartStorage.asStateFlow()
+
+  private val _isClearingCache = MutableStateFlow(false)
+  val isClearingCache: StateFlow<Boolean> = _isClearingCache.asStateFlow()
+
+  private val _compatibilityReport = MutableStateFlow<GameCompatibilityReport?>(null)
+  val compatibilityReport: StateFlow<GameCompatibilityReport?> = _compatibilityReport.asStateFlow()
+
   fun clearActionBanner() {
     _actionBanner.value = null
+  }
+
+  fun refreshSmartStorage(games: List<GameEntity>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val hasUsage = tweaksManager.hasUsageStatsPermission()
+      _smartStorage.value =
+        SmartStorageInspectorEngine.inspectStorage(
+          context = appContext,
+          games = games,
+          hasUsageAccess = hasUsage,
+        )
+    }
+  }
+
+  fun clearDrxCache(games: List<GameEntity>) {
+    if (_isClearingCache.value) return
+    viewModelScope.launch(Dispatchers.IO) {
+      _isClearingCache.value = true
+      try {
+        val cleared = SmartStorageInspectorEngine.clearDrxCache(appContext)
+        val hasUsage = tweaksManager.hasUsageStatsPermission()
+        _smartStorage.value =
+          SmartStorageInspectorEngine.inspectStorage(
+            context = appContext,
+            games = games,
+            hasUsageAccess = hasUsage,
+          )
+        val isIndo = userPrefs.value.language == LanguageMode.INDONESIAN
+        _actionBanner.value =
+          if (isIndo) "Cache internal DRX dibersihkan (${TimeAndSizeFormatters.formatBytesAuto(cleared)})."
+          else "DRX internal cache cleared (${TimeAndSizeFormatters.formatBytesAuto(cleared)})."
+      } finally {
+        _isClearingCache.value = false
+      }
+    }
+  }
+
+  fun refreshCompatibilityReport(
+    telemetry: SystemTelemetry,
+    permissionStates: List<PermissionStateItem>,
+    games: List<GameEntity>,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val isIndo = userPrefs.value.language == LanguageMode.INDONESIAN
+      _compatibilityReport.value =
+        GameCompatibilityEngine.evaluate(
+          context = appContext,
+          telemetry = telemetry,
+          permissionStates = permissionStates,
+          games = games,
+          tweaksManager = tweaksManager,
+          isIndo = isIndo,
+        )
+    }
   }
 
   fun runLagScan(includeNetworkProbe: Boolean = true) {

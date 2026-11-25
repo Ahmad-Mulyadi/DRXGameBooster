@@ -16,12 +16,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DisplaySettings
+import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -38,9 +44,13 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -87,6 +97,18 @@ object ToolRoutes {
   const val UPDATE_CENTER = "tool_update_center"
   const val SESSION_INTELLIGENCE = "tool_session_intelligence"
   const val STABILITY_WATCH = "tool_stability_watch"
+  // v1.25.5 New Intelligence & Gaming Tools
+  const val SESSION_TIMELINE = "tool_session_timeline"
+  const val RESOURCE_REPORT = "tool_resource_report"
+  const val PROFILE_AUTOMATION = "tool_profile_automation"
+  const val PRE_GAME_CHECK = "tool_pre_game_check"
+  const val TOUCH_TEST = "tool_touch_test"
+  const val FOCUS_MODE = "tool_focus_mode"
+  const val SCREENSHOT = "tool_screenshot"
+  const val THERMAL_GUARD = "tool_thermal_guard"
+  const val SESSION_RECAP = "tool_session_recap"
+  const val STORAGE_INSPECTOR = "tool_storage_inspector"
+  const val COMPATIBILITY_CHECK = "tool_compatibility_check"
 }
 
 private data class ToolEntry(
@@ -114,16 +136,25 @@ fun ToolsHubScreen(onNavigateTool: (String) -> Unit) {
           listOf(
             ToolEntry(ToolRoutes.BOOSTER, strings.toolBoosterTitle, strings.toolBoosterSub, Icons.Default.Bolt),
             ToolEntry(ToolRoutes.SIDEBAR, strings.toolSidebarTitle, strings.toolSidebarSub, Icons.Default.PictureInPictureAlt),
+            ToolEntry(ToolRoutes.PROFILE_AUTOMATION, strings.profileAutomationTitle, strings.profileAutomationSub, Icons.Default.AutoAwesome),
+            ToolEntry(ToolRoutes.FOCUS_MODE, strings.focusModeTitle, strings.focusModeSub, Icons.Default.DoNotDisturbOn),
+            ToolEntry(ToolRoutes.PRE_GAME_CHECK, strings.preGameCheckTitle, strings.preGameCheckSub, Icons.AutoMirrored.Filled.FactCheck),
             ToolEntry(ToolRoutes.CUSTOMIZATION, strings.customizationCenterTitle, strings.customizationCenterSub, Icons.Default.Palette),
             ToolEntry(ToolRoutes.UTILITIES, strings.toolUtilitiesTitle, strings.toolUtilitiesSub, Icons.Default.Build),
           ),
       ),
       ToolSection(
-        categoryTitle = "Diagnostics & Health",
+        categoryTitle = "Diagnostics & Intelligence",
         items =
           listOf(
+            ToolEntry(ToolRoutes.THERMAL_GUARD, strings.thermalGuardTitle, strings.thermalGuardSub, Icons.Default.Thermostat),
+            ToolEntry(ToolRoutes.SESSION_TIMELINE, strings.sessionTimelineTitle, strings.sessionTimelineSub, Icons.Default.Timeline),
+            ToolEntry(ToolRoutes.SESSION_RECAP, strings.sessionRecapTitle, strings.sessionRecapSub, Icons.Default.Summarize),
+            ToolEntry(ToolRoutes.RESOURCE_REPORT, strings.resourceReportTitle, strings.resourceReportSub, Icons.Default.Assessment),
+            ToolEntry(ToolRoutes.COMPATIBILITY_CHECK, strings.compatibilityCheckTitle, strings.compatibilityCheckSub, Icons.Default.VerifiedUser),
+            ToolEntry(ToolRoutes.STORAGE_INSPECTOR, strings.storageInspectorTitle, strings.storageInspectorSub, Icons.Default.Storage),
             ToolEntry(ToolRoutes.STABILITY_WATCH, strings.stabilityWatchTitle, strings.stabilityWatchSub, Icons.Default.Security),
-            ToolEntry(ToolRoutes.SESSION_INTELLIGENCE, strings.sessionIntelligenceTitle, strings.sessionIntelligenceSub, Icons.Default.Timeline),
+            ToolEntry(ToolRoutes.SESSION_INTELLIGENCE, strings.sessionIntelligenceTitle, strings.sessionIntelligenceSub, Icons.Default.Insights),
             ToolEntry(ToolRoutes.LAG_DETECTIVE, "DRX Lag Detective", "Memory, thermal, CPU & latency bottleneck finder", Icons.Default.Radar),
             ToolEntry(ToolRoutes.CRASH_ANALYZER, "DRX Crash Analyzer", "Session exit classification & diagnostic log scan", Icons.Default.BugReport),
             ToolEntry(ToolRoutes.GAMING_HEALTH, "DRX Gaming Health", "Pre-game readiness score across 6 hardware metrics", Icons.Default.HealthAndSafety),
@@ -144,6 +175,7 @@ fun ToolsHubScreen(onNavigateTool: (String) -> Unit) {
         categoryTitle = "Screen Capture & Gallery",
         items =
           listOf(
+            ToolEntry(ToolRoutes.SCREENSHOT, strings.screenshotStudioTitle, strings.screenshotStudioSub, Icons.Default.CameraAlt),
             ToolEntry(ToolRoutes.SCREEN_RECORDER, "DRX Pro Recorder", "480p-1080p MP4 recorder, audio mix & screenshot", Icons.Default.FiberManualRecord),
             ToolEntry(ToolRoutes.MEDIA_GALLERY, "DRX Media Gallery", "Screenshots, recordings, multi-share & SAF cleanup", Icons.Default.PhotoLibrary),
           ),
@@ -160,7 +192,8 @@ fun ToolsHubScreen(onNavigateTool: (String) -> Unit) {
         categoryTitle = strings.catDisplayTools,
         items =
           listOf(
-            ToolEntry(ToolRoutes.DISPLAY, strings.toolDisplayTitle, strings.toolDisplaySub, Icons.Default.TouchApp),
+            ToolEntry(ToolRoutes.DISPLAY, strings.displayIntelTitle, strings.displayIntelSub, Icons.Default.DisplaySettings),
+            ToolEntry(ToolRoutes.TOUCH_TEST, strings.touchResponseTestTitle, strings.touchResponseTestSub, Icons.Default.TouchApp),
           ),
       ),
       ToolSection(

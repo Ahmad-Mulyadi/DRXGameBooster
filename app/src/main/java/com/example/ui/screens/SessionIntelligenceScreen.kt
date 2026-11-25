@@ -77,6 +77,7 @@ fun SessionIntelligenceScreen(
   viewModel: DrxMainViewModel,
   onOpenGameStats: (String) -> Unit,
   onBack: () -> Unit,
+  onOpenSessionRecap: () -> Unit = {},
 ) {
   BackHandler(onBack = onBack)
   val strings = LocalStrings.current
@@ -199,6 +200,13 @@ fun SessionIntelligenceScreen(
             modifier = Modifier.weight(1f).testTag("session_save_txt_btn"),
           )
         }
+        Spacer(Modifier.height(8.dp))
+        DrxSecondaryButton(
+          label = strings.sessionRecapTitle,
+          icon = Icons.Default.Timer,
+          onClick = onOpenSessionRecap,
+          modifier = Modifier.fillMaxWidth().height(42.dp).testTag("session_open_recap_btn"),
+        )
       }
     }
 

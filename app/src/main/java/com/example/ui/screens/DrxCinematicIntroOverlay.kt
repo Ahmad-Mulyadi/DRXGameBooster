@@ -56,6 +56,7 @@ import com.example.ui.theme.BorderHairline
 import com.example.ui.theme.CinematicBlack
 import com.example.ui.theme.CinematicElectricBlue
 import com.example.ui.theme.CinematicNeonCyan
+import com.example.ui.theme.DrxAnimatedGifLogo
 import com.example.ui.theme.GraphiteSecondary
 import com.example.ui.theme.SilverChrome
 import com.example.ui.theme.TextMain
@@ -290,42 +291,16 @@ fun DrxCinematicIntroOverlay(
       Box(
         modifier =
           Modifier
-            .size(136.dp)
+            .size(196.dp)
             .scale(logoScale)
-            .alpha(logoAlpha)
-            .clip(RoundedCornerShape(30.dp))
-            .border(1.dp, CinematicElectricBlue.copy(alpha = 0.35f), RoundedCornerShape(30.dp)),
+            .alpha(if (motionActive) 1f else logoAlpha),
         contentAlignment = Alignment.Center,
       ) {
-        Image(
-          painter = painterResource(id = R.drawable.drx_logo),
+        DrxAnimatedGifLogo(
+          animationsEnabled = motionActive,
           contentDescription = "DRX GAME TURBO PRO Logo",
-          contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
         )
-
-        if (motionActive && shimmerPos in -0.15f..1.30f) {
-          Canvas(modifier = Modifier.fillMaxSize()) {
-            val offsetX = size.width * shimmerPos
-            drawLine(
-              brush =
-                Brush.linearGradient(
-                  colors =
-                    listOf(
-                      Color.Transparent,
-                      SilverChrome.copy(alpha = 0.30f),
-                      CinematicNeonCyan.copy(alpha = 0.24f),
-                      Color.Transparent,
-                    ),
-                  start = Offset(offsetX - 48f, 0f),
-                  end = Offset(offsetX + 48f, size.height),
-                ),
-              start = Offset(offsetX - 28f, -20f),
-              end = Offset(offsetX + 28f, size.height + 20f),
-              strokeWidth = 34.dp.toPx(),
-            )
-          }
-        }
       }
 
       Spacer(Modifier.height(34.dp))

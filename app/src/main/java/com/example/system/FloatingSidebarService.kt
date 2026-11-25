@@ -109,11 +109,10 @@ class FloatingSidebarService : Service() {
   }
 
   private enum class SidebarTab(val label: String, val iconRes: Int) {
-    HUD("HUD", R.drawable.ic_sidebar_home),
+    HUD("Home", R.drawable.ic_sidebar_home),
     APPS("Apps", R.drawable.ic_sidebar_apps),
     VOICE("Voice", R.drawable.ic_sidebar_voice),
     TOOLS("Tools", R.drawable.ic_sidebar_tools),
-    RECORD("Record", R.drawable.ic_sidebar_record),
     MONITOR("Monitor", R.drawable.ic_sidebar_monitor),
   }
 
@@ -437,7 +436,7 @@ class FloatingSidebarService : Service() {
 
     val handleBg =
       GradientDrawable().apply {
-        setColor("#EB0B0E14".toColorInt())
+        setColor("#EB090D14".toColorInt())
         setStroke(1, "#33087BFF".toColorInt())
         val r = dp(14).toFloat()
         cornerRadii =
@@ -450,7 +449,7 @@ class FloatingSidebarService : Service() {
         background =
           GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf("#13D9FF".toColorInt(), "#087BFF".toColorInt()),
+            intArrayOf("#15D9FF".toColorInt(), "#087BFF".toColorInt()),
           ).apply { cornerRadius = dp(4).toFloat() }
         layoutParams = LinearLayout.LayoutParams(dp(4), dp(46))
       }
@@ -600,7 +599,7 @@ class FloatingSidebarService : Service() {
 
     val panelBg =
       GradientDrawable().apply {
-        setColor("#F40B0E14".toColorInt())
+        setColor("#F4090D14".toColorInt())
         setStroke(dp(1), "#26FFFFFF".toColorInt())
         cornerRadius = dp(28).toFloat()
       }
@@ -684,7 +683,7 @@ class FloatingSidebarService : Service() {
     headerRow.addView(logoBadge)
     headerRow.addView(brandCol)
     headerRow.addView(
-      createSmallIconBtn("⚙", "#172030", "#DCE4F0") {
+      createSmallIconBtn("⚙", "#151E2B", "#DCE5F2") {
         collapseControlCenter()
         val i =
           Intent(this, MainActivity::class.java)
@@ -694,7 +693,7 @@ class FloatingSidebarService : Service() {
       }
     )
     headerRow.addView(
-      createSmallIconBtn("✕", "#172030", "#F07878") {
+      createSmallIconBtn("✕", "#151E2B", "#FF5C70") {
         collapseControlCenter()
       }
     )
@@ -834,14 +833,14 @@ class FloatingSidebarService : Service() {
     bar.removeAllViews()
     SidebarTab.entries.forEach { tab ->
       val selected = tab == activeTab
-      val fgHex = if (selected) "#13D9FF" else "#929EAF"
+      val fgHex = if (selected) "#15D9FF" else "#929EAF"
       val itemBox =
         LinearLayout(this).apply {
           orientation = LinearLayout.VERTICAL
           gravity = Gravity.CENTER
           background =
             GradientDrawable().apply {
-              setColor((if (selected) "#172030" else "#0B0E14").toColorInt())
+              setColor((if (selected) "#151E2B" else "#090D14").toColorInt())
               setStroke(1, (if (selected) "#087BFF" else "#16FFFFFF").toColorInt())
               cornerRadius = dp(14).toFloat()
             }
@@ -894,7 +893,6 @@ class FloatingSidebarService : Service() {
       SidebarTab.APPS -> buildAppsTab(container, isIndo)
       SidebarTab.VOICE -> buildVoiceTab(container, isIndo)
       SidebarTab.TOOLS -> buildToolsTab(container, isIndo)
-      SidebarTab.RECORD -> buildRecordTab(container, isIndo)
       SidebarTab.MONITOR -> buildMonitorTab(container, isIndo)
     }
     updateLiveMetrics()
@@ -916,7 +914,7 @@ class FloatingSidebarService : Service() {
       createGridBtn(
         if (hudActive) (if (isIndo) "HUD Aktif • Matikan" else "HUD ON • Turn Off")
         else (if (isIndo) "Tampilkan Live HUD" else "Show Live HUD"),
-        if (hudActive) "#55D69A" else "#087BFF",
+        if (hudActive) "#39D98A" else "#087BFF",
         hudActive,
       ) {
         val nextEnabled = !hudActive
@@ -945,7 +943,7 @@ class FloatingSidebarService : Service() {
     HudDisplayMode.entries.forEach { mode ->
       val selected = currentPrefs.hudMode == mode
       modeRow.addView(
-        createGridBtn(mode.label, if (selected) "#087BFF" else "#172030", selected) {
+        createGridBtn(mode.label, if (selected) "#087BFF" else "#151E2B", selected) {
           serviceScope.launch {
             prefs.setHudOverlayConfig(enabled = true, mode = mode)
             currentPrefs = currentPrefs.copy(hudOverlayEnabled = true, hudMode = mode)
@@ -978,7 +976,7 @@ class FloatingSidebarService : Service() {
     val boostCard = createSectionBox()
     val boostLabel =
       TextView(this).apply {
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
         typeface = DrxOverlayFonts.interMedium(this@FloatingSidebarService)
         text = boostStatusText.ifBlank {
@@ -1020,7 +1018,7 @@ class FloatingSidebarService : Service() {
         }
       val targetRow = if (idx < 2) qProfRow1 else qProfRow2
       targetRow.addView(
-        createGridBtn(lbl, if (active) "#087BFF" else "#172030", active) {
+        createGridBtn(lbl, if (active) "#087BFF" else "#151E2B", active) {
           serviceScope.launch {
             prefs.setQuickOverlayProfile(qp)
             currentPrefs =
@@ -1059,7 +1057,7 @@ class FloatingSidebarService : Service() {
     ).forEach { (prof, label) ->
       val active = currentPrefs.activeProfile == prof
       profRow.addView(
-        createGridBtn(label, if (active) "#087BFF" else "#172030", active) {
+        createGridBtn(label, if (active) "#087BFF" else "#151E2B", active) {
           serviceScope.launch {
             prefs.setActiveProfile(prof)
             currentPrefs = currentPrefs.copy(activeProfile = prof)
@@ -1091,13 +1089,13 @@ class FloatingSidebarService : Service() {
       }
     )
     timerRow.addView(
-      createGridBtn("Reset", "#172030") {
+      createGridBtn("Reset", "#151E2B") {
         resetSessionTimer()
         updateLiveMetrics()
       }
     )
     timerRow.addView(
-      createGridBtn("Mini", "#172030") {
+      createGridBtn("Mini", "#151E2B") {
         collapseControlCenter()
         openMiniWindow(MiniWindowType.TIMER, isIndo)
       }
@@ -1113,7 +1111,7 @@ class FloatingSidebarService : Service() {
         setPadding(0, dp(4), 0, 0)
       }
     footerRow.addView(
-      createGridBtn(if (isIndo) "Buka DRX" else "Open DRX", "#111722") {
+      createGridBtn(if (isIndo) "Buka DRX" else "Open DRX", "#101722") {
         collapseControlCenter()
         safeStartActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
       }
@@ -1165,7 +1163,7 @@ class FloatingSidebarService : Service() {
             orientation = LinearLayout.VERTICAL
             background =
               GradientDrawable().apply {
-                setColor("#111722".toColorInt())
+                setColor("#101722".toColorInt())
                 setStroke(1, (if (app.isBuiltInMiniWindow) "#087BFF" else "#1AFFFFFF").toColorInt())
                 cornerRadius = dp(16).toFloat()
               }
@@ -1191,7 +1189,7 @@ class FloatingSidebarService : Service() {
         cardBtn.addView(
           TextView(this).apply {
             text = badge
-            setTextColor((if (app.isBuiltInMiniWindow) "#13D9FF" else "#929EAF").toColorInt())
+            setTextColor((if (app.isBuiltInMiniWindow) "#15D9FF" else "#929EAF").toColorInt())
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
             typeface = DrxOverlayFonts.interSemiBold(this@FloatingSidebarService)
           }
@@ -1207,7 +1205,7 @@ class FloatingSidebarService : Service() {
     container.addView(
       createPrimaryActionBtn(
         if (isIndo) "+ Semat / Kelola Aplikasi" else "+ Pin / Manage Apps",
-        "#172030",
+        "#151E2B",
       ) {
         collapseControlCenter()
         safeStartActivity(
@@ -1257,7 +1255,7 @@ class FloatingSidebarService : Service() {
     topCard.addView(sectionTitle("Voice Studio Presets"))
     val statusView =
       TextView(this).apply {
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
         typeface = DrxOverlayFonts.interMedium(this@FloatingSidebarService)
         fontFeatureSettings = "tnum"
@@ -1275,7 +1273,7 @@ class FloatingSidebarService : Service() {
         if (!micGranted) (if (isIndo) "Beri Izin Mic" else "Grant Mic")
         else if (isVoicePreviewRunning) (if (isIndo) "Stop Preview" else "Stop Preview")
         else (if (isIndo) "Voice Preview" else "Voice Preview"),
-        if (isVoicePreviewRunning) "#D95F5F" else "#087BFF",
+        if (isVoicePreviewRunning) "#FF5C70" else "#087BFF",
         isVoicePreviewRunning,
       ) {
         if (!micGranted) {
@@ -1306,7 +1304,7 @@ class FloatingSidebarService : Service() {
       }
     )
     actionRow.addView(
-      createGridBtn("Studio EQ", "#172030") {
+      createGridBtn("Studio EQ", "#151E2B") {
         collapseControlCenter()
         safeStartActivity(
           Intent(this, MainActivity::class.java)
@@ -1330,7 +1328,7 @@ class FloatingSidebarService : Service() {
         val selected = activeVoicePreset == preset
         val label = preset.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
         r.addView(
-          createGridBtn(label, if (selected) "#087BFF" else "#172030", selected) {
+          createGridBtn(label, if (selected) "#087BFF" else "#151E2B", selected) {
             activeVoicePreset = preset
             val params =
               if (preset == VoicePreset.CUSTOM) {
@@ -1365,14 +1363,14 @@ class FloatingSidebarService : Service() {
         setPadding(0, dp(4), 0, dp(4))
       }
     pitchRow.addView(
-      createGridBtn("Pitch -", "#0B0E14") {
+      createGridBtn("Pitch -", "#090D14") {
         lastVoicePitch = (lastVoicePitch - 0.1f).coerceIn(0.6f, 1.75f)
         voiceEngine.params = voiceEngine.params.copy(pitchFactor = lastVoicePitch)
         voiceStatusView?.text = "${activeVoicePreset.name} • Pitch ${String.format(Locale.US, "%.2fx", lastVoicePitch)}"
       }
     )
     pitchRow.addView(
-      createGridBtn("Pitch +", "#0B0E14") {
+      createGridBtn("Pitch +", "#090D14") {
         lastVoicePitch = (lastVoicePitch + 0.1f).coerceIn(0.6f, 1.75f)
         voiceEngine.params = voiceEngine.params.copy(pitchFactor = lastVoicePitch)
         voiceStatusView?.text = "${activeVoicePreset.name} • Pitch ${String.format(Locale.US, "%.2fx", lastVoicePitch)}"
@@ -1393,7 +1391,7 @@ class FloatingSidebarService : Service() {
   private fun buildToolsTab(container: LinearLayout, isIndo: Boolean) {
     val feedback =
       TextView(this).apply {
-        setTextColor("#13D9FF".toColorInt())
+        setTextColor("#15D9FF".toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
         typeface = DrxOverlayFonts.interMedium(this@FloatingSidebarService)
         setPadding(0, 0, 0, dp(6))
@@ -1408,7 +1406,7 @@ class FloatingSidebarService : Service() {
 
     val r1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 0, 0, dp(5)) }
     r1.addView(
-      createGridBtn("Screenshot", "#172030") {
+      createGridBtn("Screenshot", "#151E2B") {
         val ok = launchCaptureConsentFromOverlay(ScreenRecordConsentActivity.MODE_SCREENSHOT, countdownSec = 0)
         feedback.text = if (ok) "Capturing DRX Screenshot..." else "Unable to capture screenshot"
         if (ok) collapseControlCenter()
@@ -1418,7 +1416,7 @@ class FloatingSidebarService : Service() {
     r1.addView(
       createGridBtn(
         if (isRecording) "Stop Rec" else "Screen Rec",
-        if (isRecording) "#D95F5F" else "#172030",
+        if (isRecording) "#FF5C70" else "#151E2B",
         isRecording,
       ) {
         if (ScreenRecorderStateHolder.state.value.isRecording || ScreenRecorderStateHolder.state.value.countdownRemainingSec > 0) {
@@ -1442,7 +1440,7 @@ class FloatingSidebarService : Service() {
       }
     )
     r1.addView(
-      createGridBtn(if (tweaksManager.isTorchEnabled) "Torch ON" else "Flashlight", if (tweaksManager.isTorchEnabled) "#087BFF" else "#172030", tweaksManager.isTorchEnabled) {
+      createGridBtn(if (tweaksManager.isTorchEnabled) "Torch ON" else "Flashlight", if (tweaksManager.isTorchEnabled) "#087BFF" else "#151E2B", tweaksManager.isTorchEnabled) {
         val state = tweaksManager.toggleFlashlight()
         feedback.text =
           when (state) {
@@ -1459,7 +1457,7 @@ class FloatingSidebarService : Service() {
     val dndOn = tweaksManager.isDndEnabled()
     val rotOn = tweaksManager.isSystemAutoRotationEnabled()
     r2.addView(
-      createGridBtn(if (dndOn) "DND ON" else "DND OFF", if (dndOn) "#087BFF" else "#172030", dndOn) {
+      createGridBtn(if (dndOn) "DND ON" else "DND OFF", if (dndOn) "#087BFF" else "#151E2B", dndOn) {
         if (tweaksManager.isDndPolicyGranted()) {
           tweaksManager.setDoNotDisturb(!dndOn)
           rebuildTabContent()
@@ -1469,7 +1467,7 @@ class FloatingSidebarService : Service() {
       }
     )
     r2.addView(
-      createGridBtn(if (rotOn) "Auto-Rot" else "Rot Lock", if (!rotOn) "#087BFF" else "#172030", !rotOn) {
+      createGridBtn(if (rotOn) "Auto-Rot" else "Rot Lock", if (!rotOn) "#087BFF" else "#151E2B", !rotOn) {
         if (tweaksManager.canWriteSystemSettings()) {
           tweaksManager.setSystemAutoRotation(!rotOn)
           rebuildTabContent()
@@ -1479,13 +1477,16 @@ class FloatingSidebarService : Service() {
       }
     )
     r2.addView(
-      createGridBtn("Timeout", "#172030") {
+      createGridBtn("Timeout", "#151E2B") {
         val next = tweaksManager.cycleScreenTimeoutMs()
         feedback.text = if (next != null) "Screen timeout: ${next / 1000}s" else "Grant Write Settings"
       }
     )
     sysCard.addView(r2)
     container.addView(sysCard)
+
+    // Integrated Pro Screen Recorder & Capture Section (consolidated from former Record tab)
+    appendRecordSection(container, isIndo)
 
     // Brightness & Media Volume Steppers
     val avCard = createSectionBox()
@@ -1494,25 +1495,25 @@ class FloatingSidebarService : Service() {
     avCard.addView(sectionTitle("${if (isIndo) "Kecerahan" else "Brightness"} ($curBrt%) • Vol ($curVol%)"))
     val avRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 0, 0, dp(5)) }
     avRow.addView(
-      createGridBtn("Brt -", "#0B0E14") {
+      createGridBtn("Brt -", "#090D14") {
         tweaksManager.setSystemBrightness((curBrt - 15).coerceAtLeast(5), false, null)
         rebuildTabContent()
       }
     )
     avRow.addView(
-      createGridBtn("Brt +", "#0B0E14") {
+      createGridBtn("Brt +", "#090D14") {
         tweaksManager.setSystemBrightness((curBrt + 15).coerceAtMost(100), false, null)
         rebuildTabContent()
       }
     )
     avRow.addView(
-      createGridBtn("Vol -", "#0B0E14") {
+      createGridBtn("Vol -", "#090D14") {
         tweaksManager.setStreamVolumePercent(AudioManager.STREAM_MUSIC, curVol - 10)
         rebuildTabContent()
       }
     )
     avRow.addView(
-      createGridBtn("Vol +", "#0B0E14") {
+      createGridBtn("Vol +", "#090D14") {
         tweaksManager.setStreamVolumePercent(AudioManager.STREAM_MUSIC, curVol + 10)
         rebuildTabContent()
       }
@@ -1521,9 +1522,9 @@ class FloatingSidebarService : Service() {
 
     // Media Controls
     val mediaRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 0, 0, dp(5)) }
-    mediaRow.addView(createGridBtn("⏮ Prev", "#172030") { tweaksManager.dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS) })
+    mediaRow.addView(createGridBtn("⏮ Prev", "#151E2B") { tweaksManager.dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS) })
     mediaRow.addView(createGridBtn("⏯ Play", "#087BFF") { tweaksManager.dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) })
-    mediaRow.addView(createGridBtn("⏭ Next", "#172030") { tweaksManager.dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT) })
+    mediaRow.addView(createGridBtn("⏭ Next", "#151E2B") { tweaksManager.dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT) })
     avCard.addView(mediaRow)
     container.addView(avCard)
 
@@ -1533,19 +1534,19 @@ class FloatingSidebarService : Service() {
     val miniRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 0, 0, dp(5)) }
     miniRow.addView(createGridBtn("Calc", "#087BFF") { collapseControlCenter(); openMiniWindow(MiniWindowType.CALCULATOR, isIndo) })
     miniRow.addView(createGridBtn("Notes", "#087BFF") { collapseControlCenter(); openMiniWindow(MiniWindowType.NOTES, isIndo) })
-    miniRow.addView(createGridBtn("Timer", "#172030") { collapseControlCenter(); openMiniWindow(MiniWindowType.TIMER, isIndo) })
-    miniRow.addView(createGridBtn("HUD", "#172030") { collapseControlCenter(); openMiniWindow(MiniWindowType.MONITOR, isIndo) })
+    miniRow.addView(createGridBtn("Timer", "#151E2B") { collapseControlCenter(); openMiniWindow(MiniWindowType.TIMER, isIndo) })
+    miniRow.addView(createGridBtn("HUD", "#151E2B") { collapseControlCenter(); openMiniWindow(MiniWindowType.MONITOR, isIndo) })
     miniCard.addView(miniRow)
 
     val clipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
     clipRow.addView(
-      createGridBtn(if (isIndo) "Baca Clipboard" else "Read Clipboard", "#0B0E14") {
+      createGridBtn(if (isIndo) "Baca Clipboard" else "Read Clipboard", "#090D14") {
         val clip = tweaksManager.readClipboardText()
         feedback.text = if (clip.isBlank()) "Clipboard empty" else "Clip: ${clip.take(40)}"
       }
     )
     clipRow.addView(
-      createGridBtn(if (isIndo) "Salin Statistik" else "Copy Telemetry", "#0B0E14") {
+      createGridBtn(if (isIndo) "Salin Statistik" else "Copy Telemetry", "#090D14") {
         val snap = telemetryMonitor.readSnapshot()
         val summary =
           "DRX Telemetry | RAM ${snap.memoryInfo.usedPercent.safeRoundToInt()}% | Bat ${snap.batteryInfo.levelPercent}% (${snap.batteryInfo.temperatureC}°C) | ${snap.displayInfo.refreshRateHz.safeRoundToInt(60)}Hz"
@@ -1557,14 +1558,14 @@ class FloatingSidebarService : Service() {
     container.addView(miniCard)
   }
 
-  private fun buildRecordTab(container: LinearLayout, isIndo: Boolean) {
+  private fun appendRecordSection(container: LinearLayout, isIndo: Boolean) {
     val rec = ScreenRecorderStateHolder.state.value
     val statusCard = createSectionBox()
     statusCard.addView(sectionTitle(if (isIndo) "Pro Screen Recorder & Capture" else "Pro Screen Recorder & Capture"))
 
     val recStatusTxt =
       TextView(this).apply {
-        setTextColor((if (rec.isRecording) "#F07878" else "#13D9FF").toColorInt())
+        setTextColor((if (rec.isRecording) "#FF5C70" else "#15D9FF").toColorInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
         typeface = DrxOverlayFonts.interSemiBold(this@FloatingSidebarService)
         fontFeatureSettings = "tnum"
@@ -1586,7 +1587,7 @@ class FloatingSidebarService : Service() {
         }
       )
       ctrlRow.addView(
-        createGridBtn("Stop & Save", "#D95F5F", true) {
+        createGridBtn("Stop & Save", "#FF5C70", true) {
           ScreenRecorderService.stopRecording(this)
           rebuildTabContent()
         }
@@ -1595,7 +1596,7 @@ class FloatingSidebarService : Service() {
       ctrlRow.addView(
         createGridBtn(
           if (isIndo) "Batal (${rec.countdownRemainingSec}d)" else "Cancel (${rec.countdownRemainingSec}s)",
-          "#D95F5F",
+          "#FF5C70",
           true,
         ) {
           ScreenRecorderService.stopRecording(this)
@@ -1613,7 +1614,7 @@ class FloatingSidebarService : Service() {
         }
       )
       ctrlRow.addView(
-        createGridBtn("Screenshot", "#172030") {
+        createGridBtn("Screenshot", "#151E2B") {
           collapseControlCenter()
           launchCaptureConsentFromOverlay(
             ScreenRecordConsentActivity.MODE_SCREENSHOT,
@@ -1629,7 +1630,7 @@ class FloatingSidebarService : Service() {
     listOf(0 to "Delay Off", 3 to "3s Delay", 5 to "5s Delay").forEach { (sec, lbl) ->
       val sel = currentPrefs.recorderCountdownSec == sec
       cdRow.addView(
-        createGridBtn(lbl, if (sel) "#087BFF" else "#172030", sel) {
+        createGridBtn(lbl, if (sel) "#087BFF" else "#151E2B", sel) {
           serviceScope.launch {
             prefs.setRecorderCountdownSec(sec)
             currentPrefs = currentPrefs.copy(recorderCountdownSec = sec)
@@ -1649,7 +1650,7 @@ class FloatingSidebarService : Service() {
     listOf(480 to "480p", 720 to "720p", 1080 to "1080p", 0 to "Orig").forEach { (preset, lbl) ->
       val sel = rec.resolutionPreset == preset
       resRow.addView(
-        createGridBtn(lbl, if (sel) "#087BFF" else "#172030", sel) {
+        createGridBtn(lbl, if (sel) "#087BFF" else "#151E2B", sel) {
           if (!ScreenRecorderStateHolder.state.value.isRecording) {
             ScreenRecorderStateHolder.updateConfig(resolutionPreset = preset)
             rebuildTabContent()
@@ -1663,7 +1664,7 @@ class FloatingSidebarService : Service() {
     listOf(24, 30, 60).forEach { fps ->
       val sel = rec.targetFps == fps
       fpsRow.addView(
-        createGridBtn("$fps FPS", if (sel) "#087BFF" else "#172030", sel) {
+        createGridBtn("$fps FPS", if (sel) "#087BFF" else "#151E2B", sel) {
           if (!ScreenRecorderStateHolder.state.value.isRecording) {
             ScreenRecorderStateHolder.updateConfig(targetFps = fps)
             rebuildTabContent()
@@ -1685,7 +1686,7 @@ class FloatingSidebarService : Service() {
     audioModes.forEach { (mode, lbl) ->
       val sel = rec.audioMode == mode
       audRow.addView(
-        createGridBtn(lbl, if (sel) "#087BFF" else "#172030", sel) {
+        createGridBtn(lbl, if (sel) "#087BFF" else "#151E2B", sel) {
           if (!ScreenRecorderStateHolder.state.value.isRecording) {
             ScreenRecorderStateHolder.updateConfig(audioMode = mode)
             rebuildTabContent()
@@ -1697,7 +1698,7 @@ class FloatingSidebarService : Service() {
 
     val deepRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
     deepRow.addView(
-      createGridBtn(if (isIndo) "Full Recorder" else "Full Recorder", "#0B0E14") {
+      createGridBtn(if (isIndo) "Full Recorder" else "Full Recorder", "#090D14") {
         collapseControlCenter()
         safeStartActivity(
           Intent(this, MainActivity::class.java)
@@ -1707,7 +1708,7 @@ class FloatingSidebarService : Service() {
       }
     )
     deepRow.addView(
-      createGridBtn(if (isIndo) "Galeri Media" else "Gallery", "#0B0E14") {
+      createGridBtn(if (isIndo) "Galeri Media" else "Gallery", "#090D14") {
         collapseControlCenter()
         safeStartActivity(
           Intent(this, MainActivity::class.java)
@@ -1782,7 +1783,7 @@ class FloatingSidebarService : Service() {
           currentPrefs.gamingModeActive -> "● GAMING ACTIVE • ${currentPrefs.activeProfile.name}"
           else -> "● STANDBY • ${currentPrefs.activeProfile.name}"
         }
-      setTextColor((if (rec.isRecording) "#F07878" else if (currentPrefs.gamingModeActive) "#55D69A" else "#13D9FF").toColorInt())
+      setTextColor((if (rec.isRecording) "#FF5C70" else if (currentPrefs.gamingModeActive) "#39D98A" else "#15D9FF").toColorInt())
     }
     homeTimerView?.text = timerFormatted
 
@@ -1795,7 +1796,7 @@ class FloatingSidebarService : Service() {
           rec.isRecording -> "● RECORDING ${ScreenRecorderService.formatDuration(rec.elapsedSeconds)}$sizeTxt"
           else -> "READY • ${if (rec.resolutionPreset == 0) "Original" else "${rec.resolutionPreset}p"} @ ${rec.targetFps}fps"
         }
-      setTextColor((if (rec.isRecording || rec.countdownRemainingSec > 0) "#F07878" else "#13D9FF").toColorInt())
+      setTextColor((if (rec.isRecording || rec.countdownRemainingSec > 0) "#FF5C70" else "#15D9FF").toColorInt())
     }
 
     monitorDetailsView?.text =
@@ -1877,7 +1878,7 @@ class FloatingSidebarService : Service() {
       orientation = LinearLayout.VERTICAL
       background =
         GradientDrawable().apply {
-          setColor("#111722".toColorInt())
+          setColor("#101722".toColorInt())
           setStroke(1, "#1AFFFFFF".toColorInt())
           cornerRadius = dp(20).toFloat()
         }
@@ -1936,7 +1937,7 @@ class FloatingSidebarService : Service() {
       background =
         GradientDrawable().apply {
           setColor(bgHex.toColorInt())
-          setStroke(1, "#6613D9FF".toColorInt())
+          setStroke(1, "#6615D9FF".toColorInt())
           cornerRadius = dp(50).toFloat()
         }
       setPadding(dp(14), dp(11), dp(14), dp(11))
@@ -1963,7 +1964,7 @@ class FloatingSidebarService : Service() {
       background =
         GradientDrawable().apply {
           setColor(bgHex.toColorInt())
-          setStroke(1, (if (highlighted) "#13D9FF" else "#1AFFFFFF").toColorInt())
+          setStroke(1, (if (highlighted) "#15D9FF" else "#1AFFFFFF").toColorInt())
           cornerRadius = dp(14).toFloat()
         }
       layoutParams =

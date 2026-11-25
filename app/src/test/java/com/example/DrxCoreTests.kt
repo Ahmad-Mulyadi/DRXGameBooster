@@ -128,13 +128,14 @@ class DrxCoreTests {
   @Test
   fun `update catalog maintains newest-to-oldest order with real badges`() {
     val entries = com.example.data.model.DrxUpdateCatalog.entries
-    assertTrue(entries.size >= 7)
-    assertEquals("1.20.0", entries.first().versionNumber)
-    assertEquals("1.10.0", entries[1].versionNumber)
-    assertEquals("1.9.0", entries[2].versionNumber)
-    assertEquals("1.3.0", entries[3].versionNumber)
-    assertEquals("1.2.0", entries[4].versionNumber)
-    assertEquals("1.1.0", entries[5].versionNumber)
+    assertTrue(entries.size >= 8)
+    assertEquals("1.25.5", entries.first().versionNumber)
+    assertEquals("1.20.0", entries[1].versionNumber)
+    assertEquals("1.10.0", entries[2].versionNumber)
+    assertEquals("1.9.0", entries[3].versionNumber)
+    assertEquals("1.3.0", entries[4].versionNumber)
+    assertEquals("1.2.0", entries[5].versionNumber)
+    assertEquals("1.1.0", entries[6].versionNumber)
     assertEquals("1.0.0", entries.last().versionNumber)
     assertEquals(com.example.data.model.DrxUpdateCatalog.latestVersion, entries.first().versionNumber)
     assertTrue(entries.all { it.newFeatures.isNotEmpty() || it.improvements.isNotEmpty() })

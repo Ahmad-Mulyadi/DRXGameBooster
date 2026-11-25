@@ -5,6 +5,9 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -16,6 +19,9 @@ import com.example.data.db.DrxRepository
 import com.example.data.db.GamingNoteEntity
 import com.example.data.db.NetworkTestEntity
 import com.example.data.model.NetworkDiagnosticResult
+import com.example.data.model.NetworkSnapshot
+import com.example.data.model.NetworkStabilityEvent
+import com.example.data.model.NetworkStabilitySummary
 import com.example.data.model.SoundPreset
 import com.example.data.model.VoicePreset
 import com.example.system.AudioFxEngine
@@ -31,6 +37,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -59,6 +66,11 @@ class DrxToolsViewModel(application: Application) : AndroidViewModel(application
 
   private val _latestNetworkResult = MutableStateFlow<NetworkDiagnosticResult?>(null)
   val latestNetworkResult: StateFlow<NetworkDiagnosticResult?> = _latestNetworkResult.asStateFlow()
+
+  private val _networkStability = MutableStateFlow(NetworkStabilitySummary())
+  val networkStability: StateFlow<NetworkStabilitySummary> = _networkStability.asStateFlow()
+
+  private var registeredNetworkCallback: ConnectivityManager.NetworkCallback? = null
 
   // Sound Center State
   private val _eqBands = MutableStateFlow<List<EqualizerBandUi>>(emptyList())
@@ -128,6 +140,140 @@ class DrxToolsViewModel(application: Application) : AndroidViewModel(application
 
   init {
     _eqBands.value = audioFxEngine.initializeSession()
+    registerNetworkStabilityCallback()
+  }
+
+  private fun registerNetworkStabilityCallback() {
+    runCatching {
+      val cm = appContext.getSystemService(ConnectivityManager::class.java) ?: return
+      val callback =
+        object : ConnectivityManager.NetworkCallback() {
+          override fun onAvailable(network: Network) {
+            val caps = runCatching { cm.getNetworkCapabilities(network) }.getOrNull()
+            val transport = resolveTransport(caps)
+            appendNetworkStabilityEvent(
+              isConnected = true,
+              transport = transport,
+              subType = "Active",
+              qualityLevel = if (transport == "Wi-Fi") 4 else 3,
+              note = "Network available ($transport)",
+              isInterruption = false,
+            )
+          }
+
+          override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            val transport = resolveTransport(caps)
+            val cur = _networkStability.value
+            if (!cur.isConnected || cur.currentTransport != transport) {
+              appendNetworkStabilityEvent(
+                isConnected = true,
+                transport = transport,
+                subType = if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) "Validated" else "Limited",
+                qualityLevel = if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) 3 else 2,
+                note = "Transport capabilities updated ($transport)",
+                isInterruption = false,
+              )
+            }
+          }
+
+          override fun onLost(network: Network) {
+            appendNetworkStabilityEvent(
+              isConnected = false,
+              transport = "Offline",
+              subType = "-",
+              qualityLevel = 0,
+              note = "Network connection lost",
+              isInterruption = true,
+            )
+          }
+        }
+      registeredNetworkCallback = callback
+      cm.registerDefaultNetworkCallback(callback)
+    }
+  }
+
+  private fun resolveTransport(caps: NetworkCapabilities?): String {
+    if (caps == null) return "Unknown"
+    return when {
+      caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
+      caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Cellular"
+      caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
+      else -> "Other"
+    }
+  }
+
+  fun observeTelemetryNetworkSnapshot(snapshot: NetworkSnapshot) {
+    _networkStability.update { cur ->
+      val nextSamples = (cur.recentQualitySamples + snapshot.qualityLevel).takeLast(24)
+      val changed = cur.events.isEmpty() || cur.isConnected != snapshot.isConnected || cur.currentTransport != snapshot.transportType
+      if (!changed) {
+        cur.copy(
+          isConnected = snapshot.isConnected,
+          currentTransport = snapshot.transportType,
+          currentSubType = snapshot.networkSubType,
+          recentQualitySamples = nextSamples,
+        )
+      } else {
+        val wasConnected = cur.isConnected && cur.events.isNotEmpty()
+        val interruptedNow = wasConnected && !snapshot.isConnected
+        val ev =
+          NetworkStabilityEvent(
+            timestampMs = System.currentTimeMillis(),
+            transportLabel = snapshot.transportType,
+            subType = snapshot.networkSubType,
+            isConnected = snapshot.isConnected,
+            qualityLevel = snapshot.qualityLevel,
+            note =
+              if (snapshot.isConnected) "Connected via ${snapshot.transportType} (${snapshot.networkSubType})"
+              else "Connection dropped / offline",
+          )
+        cur.copy(
+          isConnected = snapshot.isConnected,
+          currentTransport = snapshot.transportType,
+          currentSubType = snapshot.networkSubType,
+          interruptionCount = cur.interruptionCount + if (interruptedNow) 1 else 0,
+          transitionCount = cur.transitionCount + 1,
+          recentQualitySamples = nextSamples,
+          events = (listOf(ev) + cur.events).take(30),
+        )
+      }
+    }
+  }
+
+  private fun appendNetworkStabilityEvent(
+    isConnected: Boolean,
+    transport: String,
+    subType: String,
+    qualityLevel: Int,
+    note: String,
+    isInterruption: Boolean,
+  ) {
+    val ev =
+      NetworkStabilityEvent(
+        timestampMs = System.currentTimeMillis(),
+        transportLabel = transport,
+        subType = subType,
+        isConnected = isConnected,
+        qualityLevel = qualityLevel,
+        note = note,
+      )
+    _networkStability.update { cur ->
+      cur.copy(
+        isConnected = isConnected,
+        currentTransport = transport,
+        currentSubType = subType,
+        interruptionCount = cur.interruptionCount + if (isInterruption) 1 else 0,
+        transitionCount = cur.transitionCount + 1,
+        recentQualitySamples = (cur.recentQualitySamples + qualityLevel).takeLast(24),
+        events = (listOf(ev) + cur.events).take(30),
+      )
+    }
+  }
+
+  fun resetNetworkMonitorLog() {
+    _networkStability.update { cur ->
+      cur.copy(interruptionCount = 0, transitionCount = 0, events = emptyList())
+    }
   }
 
   // Network Actions
@@ -394,6 +540,11 @@ class DrxToolsViewModel(application: Application) : AndroidViewModel(application
   }
 
   override fun onCleared() {
+    registeredNetworkCallback?.let { cb ->
+      runCatching {
+        appContext.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(cb)
+      }
+    }
     audioFxEngine.release()
     voiceStudioEngine.stopAll()
     super.onCleared()

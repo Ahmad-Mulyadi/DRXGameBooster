@@ -51,6 +51,7 @@ import com.example.R
 import com.example.data.model.BitrateTier
 import com.example.data.model.MediaGalleryItem
 import com.example.data.model.MediaItemType
+import com.example.data.model.ScreenshotFormat
 import com.example.data.prefs.DrxPreferences
 import java.io.File
 import java.text.SimpleDateFormat
@@ -222,6 +223,7 @@ class ScreenRecorderService : Service() {
     const val ACTION_PAUSE = "com.example.action.SCREEN_REC_PAUSE"
     const val ACTION_RESUME = "com.example.action.SCREEN_REC_RESUME"
     const val ACTION_CAPTURE_SCREENSHOT = "com.example.action.SCREENSHOT_CAPTURE"
+    const val ACTION_CAPTURE_SCREENSHOT_DURING_REC = "com.example.action.SCREENSHOT_CAPTURE_DURING_REC"
 
     const val EXTRA_RESULT_CODE = "extra_result_code"
     const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -230,6 +232,7 @@ class ScreenRecorderService : Service() {
     const val EXTRA_AUDIO_MODE = "extra_audio_mode"
     const val EXTRA_BITRATE_BPS = "extra_bitrate_bps"
     const val EXTRA_COUNTDOWN_SEC = "extra_countdown_sec"
+    const val EXTRA_SCREENSHOT_FORMAT = "extra_screenshot_format"
 
     private const val CHANNEL_ID = "drx_screen_recorder_channel"
     private const val NOTIFICATION_ID = 7019
@@ -291,14 +294,32 @@ class ScreenRecorderService : Service() {
       ContextCompat.startForegroundService(context, intent)
     }
 
-    fun captureScreenshot(context: Context, resultCode: Int, data: Intent) {
+    fun captureScreenshot(
+      context: Context,
+      resultCode: Int,
+      data: Intent,
+      format: ScreenshotFormat = ScreenshotFormat.PNG,
+    ) {
       val intent =
         Intent(context, ScreenRecorderService::class.java).apply {
           action = ACTION_CAPTURE_SCREENSHOT
           putExtra(EXTRA_RESULT_CODE, resultCode)
           putExtra(EXTRA_RESULT_DATA, data)
+          putExtra(EXTRA_SCREENSHOT_FORMAT, format.name)
         }
       ContextCompat.startForegroundService(context, intent)
+    }
+
+    fun captureScreenshotDuringRecording(
+      context: Context,
+      format: ScreenshotFormat = ScreenshotFormat.PNG,
+    ) {
+      val intent =
+        Intent(context, ScreenRecorderService::class.java).apply {
+          action = ACTION_CAPTURE_SCREENSHOT_DURING_REC
+          putExtra(EXTRA_SCREENSHOT_FORMAT, format.name)
+        }
+      runCatching { context.startService(intent) }
     }
 
     fun pauseRecording(context: Context) {
@@ -407,7 +428,8 @@ class ScreenRecorderService : Service() {
       ACTION_PAUSE -> handlePause()
       ACTION_RESUME -> handleResume()
       ACTION_START -> handleStartIntent(intent)
-      ACTION_CAPTURE_SCREENSHOT -> handleScreenshotIntent(intent)
+      ACTION_CAPTURE_SCREENSHOT -> handleScreenshotIntent(intent, duringRecording = false)
+      ACTION_CAPTURE_SCREENSHOT_DURING_REC -> handleScreenshotIntent(intent, duringRecording = true)
       else -> {
         ensureForegroundNotification("Screen Recorder standby", elapsedSec = 0)
         stopSelf()
@@ -465,15 +487,43 @@ class ScreenRecorderService : Service() {
   }
 
   @SuppressLint("WrongConstant")
-  private fun handleScreenshotIntent(intent: Intent) {
+  private fun handleScreenshotIntent(intent: Intent, duringRecording: Boolean) {
+    val format =
+      runCatching {
+        ScreenshotFormat.valueOf(intent.getStringExtra(EXTRA_SCREENSHOT_FORMAT) ?: ScreenshotFormat.PNG.name)
+      }.getOrDefault(ScreenshotFormat.PNG)
+
+    if (duringRecording) {
+      val activeProj = mediaProjection
+      if (activeProj == null || (mediaRecorder == null && muxerEngine == null)) {
+        ScreenRecorderStateHolder.setScreenshotCaptured(
+          null,
+          null,
+          "Active recording projection unavailable; retry screenshot.",
+        )
+        return
+      }
+      captureFrameFromProjection(
+        projection = activeProj,
+        ownsProjection = false,
+        format = format,
+      )
+      return
+    }
+
     createNotificationChannel()
     if (!ensureForegroundNotification("Capturing DRX Screenshot...", elapsedSec = 0)) {
-      ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Foreground mediaProjection permission denied.")
+      ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Foreground MediaProjection permission denied.")
       stopSelf()
       return
     }
-    if (mediaRecorder != null || muxerEngine != null) {
-      ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Stop active recording before single screenshot or use system shortcut.")
+    val existingProj = mediaProjection
+    if (existingProj != null && (mediaRecorder != null || muxerEngine != null)) {
+      captureFrameFromProjection(
+        projection = existingProj,
+        ownsProjection = false,
+        format = format,
+      )
       return
     }
 
@@ -501,86 +551,191 @@ class ScreenRecorderService : Service() {
       return
     }
 
-    val (w, h, dpi) = computeSafeCaptureGeometry(0) // Original display size
-    val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
-    val handled = java.util.concurrent.atomic.AtomicBoolean(false)
+    captureFrameFromProjection(
+      projection = projection,
+      ownsProjection = true,
+      format = format,
+    )
+  }
+
+  @SuppressLint("WrongConstant")
+  private fun captureFrameFromProjection(
+    projection: MediaProjection,
+    ownsProjection: Boolean,
+    format: ScreenshotFormat,
+  ) {
+    val (w, h, dpi) = computeSafeCaptureGeometry(0) // Orientation-aware full display size
+    val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 3)
+    val finished = java.util.concurrent.atomic.AtomicBoolean(false)
+    val processing = java.util.concurrent.atomic.AtomicBoolean(false)
+    val blankAttempts = java.util.concurrent.atomic.AtomicInteger(0)
     val mainHandler = Handler(Looper.getMainLooper())
 
-    val vd =
-      projection.createVirtualDisplay(
-        "DRX_Screenshot",
-        w,
-        h,
-        dpi,
-        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-        reader.surface,
-        null,
-        mainHandler,
-      )
-
-    if (vd == null) {
-      reader.close()
-      runCatching { projection.stop() }
-      ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "VirtualDisplay could not initialize.")
-      stopForegroundCompat()
-      stopSelf()
-      return
-    }
-
-    reader.setOnImageAvailableListener({ imgReader ->
-      if (!handled.compareAndSet(false, true)) return@setOnImageAvailableListener
-      val image = runCatching { imgReader.acquireLatestImage() }.getOrNull()
-      if (image != null) {
-        serviceScope.launch(Dispatchers.IO) {
-          try {
-            val plane = image.planes[0]
-            val buffer = plane.buffer
-            val pixelStride = plane.pixelStride
-            val rowStride = plane.rowStride
-            val rowPadding = rowStride - pixelStride * w
-            val bmpWidth = w + rowPadding / pixelStride
-            val rawBmp = createBitmap(bmpWidth, h)
-            rawBmp.copyPixelsFromBuffer(buffer)
-            val cropped = Bitmap.createBitmap(rawBmp, 0, 0, w, h)
-            if (cropped != rawBmp) rawBmp.recycle()
-
-            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val fileName = "DRX_Screenshot_$stamp.png"
-            val safUri = runCatching { DrxPreferences(this@ScreenRecorderService).prefsFlow.first().safRootTreeUri }.getOrDefault("")
-            val saved = DrxMediaStorageManager.saveBitmapScreenshot(this@ScreenRecorderService, cropped, fileName, safUri)
-            cropped.recycle()
+    var tempCallbackRegistered = false
+    val tempProjectionCallback =
+      object : MediaProjection.Callback() {
+        override fun onStop() {
+          if (finished.compareAndSet(false, true)) {
+            runCatching { reader.close() }
             ScreenRecorderStateHolder.setScreenshotCaptured(
-              item = saved,
-              status = if (saved != null) "Screenshot saved: ${saved.displayName}" else null,
-              error = if (saved == null) "Failed to write screenshot to MediaStore." else null,
+              null,
+              null,
+              "Screen capture stopped by system before a valid frame was ready.",
             )
-          } catch (t: Throwable) {
-            ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Screenshot error: ${t.message ?: "Unknown"}")
-          } finally {
-            image.close()
-            mainHandler.post {
-              runCatching { vd.release() }
-              runCatching { reader.close() }
-              runCatching { projection.stop() }
+            if (ownsProjection) {
               stopForegroundCompat()
               stopSelf()
             }
           }
         }
       }
-    }, mainHandler)
 
-    // Safety timeout if OS yields no frame within 3.5s
-    mainHandler.postDelayed({
-      if (handled.compareAndSet(false, true)) {
-        runCatching { vd.release() }
+    if (ownsProjection) {
+      runCatching {
+        projection.registerCallback(tempProjectionCallback, mainHandler)
+        tempCallbackRegistered = true
+      }
+    }
+
+    var vdRef: VirtualDisplay? = null
+    fun releaseCaptureResources() {
+      mainHandler.post {
+        runCatching { vdRef?.release() }
+        vdRef = null
         runCatching { reader.close() }
+        if (ownsProjection) {
+          if (tempCallbackRegistered) {
+            runCatching { projection.unregisterCallback(tempProjectionCallback) }
+          }
+          runCatching { projection.stop() }
+          stopForegroundCompat()
+          stopSelf()
+        }
+      }
+    }
+
+    val vd =
+      runCatching {
+        projection.createVirtualDisplay(
+          if (ownsProjection) "DRX_Screenshot" else "DRX_Screenshot_Aux",
+          w,
+          h,
+          dpi,
+          DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+          reader.surface,
+          null,
+          mainHandler,
+        )
+      }.getOrNull()
+
+    if (vd == null) {
+      runCatching { reader.close() }
+      if (ownsProjection) {
+        if (tempCallbackRegistered) {
+          runCatching { projection.unregisterCallback(tempProjectionCallback) }
+        }
         runCatching { projection.stop() }
-        ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Screenshot capture timed out.")
         stopForegroundCompat()
         stopSelf()
       }
-    }, 3500L)
+      val msg =
+        if (!ownsProjection) "Device restricted secondary screenshot VirtualDisplay while recording."
+        else "VirtualDisplay could not initialize for screenshot."
+      ScreenRecorderStateHolder.setScreenshotCaptured(null, null, msg)
+      return
+    }
+    vdRef = vd
+
+    reader.setOnImageAvailableListener({ imgReader ->
+      if (finished.get() || !processing.compareAndSet(false, true)) return@setOnImageAvailableListener
+      val image = runCatching { imgReader.acquireLatestImage() }.getOrNull()
+      if (image == null) {
+        processing.set(false)
+        return@setOnImageAvailableListener
+      }
+
+      serviceScope.launch(Dispatchers.IO) {
+        var copiedBitmap: Bitmap? = null
+        try {
+          val plane = image.planes[0]
+          val buffer = plane.buffer
+          val pixelStride = plane.pixelStride.coerceAtLeast(4)
+          val rowStride = plane.rowStride
+          val rowPadding = (rowStride - pixelStride * w).coerceAtLeast(0)
+          val bmpWidth = (w + rowPadding / pixelStride).coerceAtLeast(w)
+          val rawBmp = createBitmap(bmpWidth, h)
+          rawBmp.copyPixelsFromBuffer(buffer)
+          val cropped =
+            if (bmpWidth != w) {
+              Bitmap.createBitmap(rawBmp, 0, 0, w, h).also {
+                if (it != rawBmp) rawBmp.recycle()
+              }
+            } else {
+              rawBmp
+            }
+          copiedBitmap = cropped
+
+          if (ScreenshotEngine.isBlankOrBlackBitmap(cropped)) {
+            val tries = blankAttempts.incrementAndGet()
+            if (tries < 8) {
+              // Discard warm-up black frame and wait for next rendered frame
+              return@launch
+            }
+            if (finished.compareAndSet(false, true)) {
+              ScreenRecorderStateHolder.setScreenshotCaptured(
+                item = null,
+                status = null,
+                error = "Screen appears blank or protected (FLAG_SECURE). Blank frame was not saved.",
+              )
+              releaseCaptureResources()
+            }
+            return@launch
+          }
+
+          if (!finished.compareAndSet(false, true)) return@launch
+
+          val fileName = ScreenshotEngine.buildUniqueScreenshotFilename(format = format)
+          val safUri = runCatching { DrxPreferences(this@ScreenRecorderService).prefsFlow.first().safRootTreeUri }.getOrDefault("")
+          val saved =
+            DrxMediaStorageManager.saveBitmapScreenshot(
+              context = this@ScreenRecorderService,
+              bitmap = cropped,
+              fileName = fileName,
+              safTreeUri = safUri,
+              format = format,
+            )
+          ScreenRecorderStateHolder.setScreenshotCaptured(
+            item = saved,
+            status = if (saved != null) "Screenshot saved: ${saved.displayName}" else null,
+            error = if (saved == null) "Failed to write verified screenshot to storage." else null,
+          )
+          releaseCaptureResources()
+        } catch (t: Throwable) {
+          if (finished.compareAndSet(false, true)) {
+            ScreenRecorderStateHolder.setScreenshotCaptured(null, null, "Screenshot error: ${t.message ?: "Unknown"}")
+            releaseCaptureResources()
+          }
+        } finally {
+          runCatching { copiedBitmap?.recycle() }
+          runCatching { image.close() }
+          processing.set(false)
+        }
+      }
+    }, mainHandler)
+
+    // Safety timeout if OS yields only blank frames or stalls
+    mainHandler.postDelayed({
+      if (finished.compareAndSet(false, true)) {
+        val hadBlankFrames = blankAttempts.get() > 0
+        ScreenRecorderStateHolder.setScreenshotCaptured(
+          null,
+          null,
+          if (hadBlankFrames) "Capture blocked (FLAG_SECURE or blank surface). No blank file saved."
+          else "Screenshot capture timed out before a valid frame arrived.",
+        )
+        releaseCaptureResources()
+      }
+    }, 2800L)
   }
 
   private fun handleStartIntent(intent: Intent) {
@@ -1326,8 +1481,8 @@ class ScreenRecorderService : Service() {
         )
         background =
           android.graphics.drawable.GradientDrawable().apply {
-            setColor("#EB111722".toColorInt())
-            setStroke((1.5f * density).roundToInt(), "#F07878".toColorInt())
+            setColor("#EB101722".toColorInt())
+            setStroke((1.5f * density).roundToInt(), "#FF5C70".toColorInt())
             cornerRadius = 999f * density
           }
       }

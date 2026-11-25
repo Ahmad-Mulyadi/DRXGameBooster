@@ -90,6 +90,7 @@ fun GamesScreen(
   systemUsageMap: Map<String, SystemGameUsageSummary> = emptyMap(),
   notificationCountsByPackage: Map<String, Int> = emptyMap(),
   onOpenGameStats: (String) -> Unit = {},
+  onOpenAutomation: (String) -> Unit = {},
 ) {
   val strings = LocalStrings.current
   val drxColors = LocalDrxColors.current
@@ -344,7 +345,7 @@ fun GamesScreen(
                 viewModel = viewModel,
                 onOpenDetails = { selectedGameForDetails = game },
                 onOpenStats = { onOpenGameStats(game.packageName) },
-                onPlay = { viewModel.startGameLaunch(game, activity) },
+                onPlay = { viewModel.requestLaunchWithPreGameCheck(game, activity) },
               )
             }
           }
@@ -363,7 +364,7 @@ fun GamesScreen(
                 viewModel = viewModel,
                 onOpenDetails = { selectedGameForDetails = game },
                 onOpenStats = { onOpenGameStats(game.packageName) },
-                onPlay = { viewModel.startGameLaunch(game, activity) },
+                onPlay = { viewModel.requestLaunchWithPreGameCheck(game, activity) },
               )
             }
           }
@@ -485,12 +486,23 @@ fun GamesScreen(
       )
 
       Spacer(Modifier.height(10.dp))
+      DrxSecondaryButton(
+        label = strings.profileAutomationTitle,
+        icon = Icons.Default.Tune,
+        onClick = {
+          selectedGameForDetails = null
+          onOpenAutomation(game.packageName)
+        },
+        modifier = Modifier.fillMaxWidth().testTag("details_automation_${game.packageName}"),
+      )
+
+      Spacer(Modifier.height(10.dp))
       DrxPrimaryButton(
         label = strings.boostAndPlayBtn,
         icon = Icons.Default.PlayArrow,
         onClick = {
           selectedGameForDetails = null
-          viewModel.startGameLaunch(game, activity)
+          viewModel.requestLaunchWithPreGameCheck(game, activity)
         },
         modifier = Modifier.fillMaxWidth().testTag("details_boost_play_${game.packageName}"),
       )

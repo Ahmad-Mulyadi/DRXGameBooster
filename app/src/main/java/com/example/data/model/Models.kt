@@ -111,6 +111,13 @@ data class NetworkSnapshot(
   val qualityLevel: Int = 0, // 0 = Offline, 1 = Poor, 2 = Fair, 3 = Good, 4 = Excellent
 )
 
+data class DisplayModeOption(
+  val modeId: Int,
+  val widthPx: Int,
+  val heightPx: Int,
+  val refreshRateHz: Float,
+)
+
 data class DisplayInfoData(
   val widthPx: Int = 1080,
   val heightPx: Int = 2400,
@@ -120,6 +127,10 @@ data class DisplayInfoData(
   val isHdr: Boolean = false,
   val brightnessPercent: Int = 50,
   val screenTimeoutMs: Int = 60_000,
+  val physicalSizeInches: String = "-",
+  val orientationLabel: String = "Portrait",
+  val activeDisplayModeId: Int? = null,
+  val supportedModes: List<DisplayModeOption> = emptyList(),
 )
 
 data class SystemTelemetry(
@@ -192,7 +203,7 @@ enum class DrxThemePreset(
   val bgHex: Long,
   val cardHex: Long,
 ) {
-  DRX_DEFAULT("drx_default", "DRX Default", 0xFF087BFFL, 0xFF13D9FFL, 0xFF050609L, 0xFF111722L),
+  DRX_DEFAULT("drx_default", "DRX Default", 0xFF087BFFL, 0xFF15D9FFL, 0xFF050609L, 0xFF101722L),
   AMOLED_BLACK("amoled_black", "AMOLED Black", 0xFF2563EBL, 0xFF38BDF8L, 0xFF000000L, 0xFF0B0D13L),
   CYBERPUNK_BLUE("cyberpunk_blue", "Cyberpunk Blue", 0xFF00A3FFL, 0xFF00F5D4L, 0xFF050B16L, 0xFF0D1B2EL),
   RGB_GAMING("rgb_gaming", "RGB Gaming", 0xFF3B82F6L, 0xFF10B981L, 0xFF080912L, 0xFF131626L),
@@ -403,5 +414,203 @@ data class SessionIntelligenceSummary(
   val weeklyChart4w: List<DayActivityBucket> = emptyList(),
   val usesSystemUsageEstimate: Boolean = false,
 )
+
+enum class DevicePerformanceState {
+  READY,
+  MONITORING,
+  THERMAL_WARNING,
+  LIMITED_MONITORING,
+  DEVICE_IDLE,
+}
+
+enum class SessionTimelineEventType(val code: String) {
+  LAUNCHED("launched"),
+  MONITORING_STARTED("monitoring_started"),
+  TEMP_INCREASED("temp_increased"),
+  THERMAL_WARNING("thermal_warning"),
+  BATTERY_DROP("battery_drop"),
+  NETWORK_CHANGED("network_changed"),
+  MEMORY_PRESSURE("memory_pressure"),
+  RECORDING_STARTED("recording_started"),
+  FPS_DROP("fps_drop"),
+  SESSION_ENDED("session_ended"),
+}
+
+data class GameResourceReport(
+  val packageName: String,
+  val gameName: String,
+  val sessionCount: Int,
+  val totalPlaytimeMs: Long,
+  val averageSessionDurationMs: Long,
+  val estimatedTotalBatteryDrainPercent: Int,
+  val avgRamUsedPercent: Float?,
+  val avgRamFreeMb: Long?,
+  val avgCpuPercentOrNull: Float?,
+  val thermalWarningCount: Int,
+  val peakTempC: Float,
+  val monitoringAvailabilityLabel: String,
+  val hasRestrictedCpu: Boolean,
+)
+
+enum class PreGameCheckStatus {
+  READY,
+  WARNING,
+  UNAVAILABLE,
+}
+
+data class PreGameCheckItem(
+  val id: String,
+  val title: String,
+  val valueText: String,
+  val status: PreGameCheckStatus,
+  val detailNote: String,
+  val tipText: String? = null,
+)
+
+data class PreGameCheckReport(
+  val targetGameName: String?,
+  val targetPackageName: String?,
+  val overallStatus: PreGameCheckStatus,
+  val checkedAtMs: Long,
+  val items: List<PreGameCheckItem>,
+  val summaryTip: String,
+)
+
+enum class TouchTestMode(val id: String, val labelEn: String, val labelId: String) {
+  TAP("tap", "Tap Test", "Uji Tap"),
+  MULTI_TOUCH("multi_touch", "Multi-Touch", "Multi-Touch"),
+  TRACKING("tracking", "Drag & Tracking", "Tracking & Geser"),
+  GESTURE("gesture", "Swipe & Gesture", "Swipe & Gestur"),
+  ACCURACY("accuracy", "Accuracy Target", "Target Akurasi"),
+}
+
+data class FocusModeSessionSummary(
+  val startedAtMs: Long,
+  val endedAtMs: Long,
+  val durationMs: Long,
+  val targetMinutes: Int,
+  val dndActivated: Boolean,
+  val screenTimeoutAppliedMs: Int?,
+  val completedTarget: Boolean,
+)
+
+enum class ScreenshotFormat(val ext: String, val mimeType: String, val label: String) {
+  PNG("png", "image/png", "PNG"),
+  JPEG("jpg", "image/jpeg", "JPEG"),
+}
+
+enum class ScreenshotCaptureMode {
+  APP_WINDOW,
+  FULL_SCREEN,
+}
+
+enum class ThermalTier(val labelEn: String, val labelId: String) {
+  NORMAL("Normal", "Normal"),
+  WARM("Warm", "Hangat"),
+  ELEVATED("Elevated", "Tinggi"),
+  CRITICAL("Critical", "Kritis"),
+}
+
+data class ThermalGuardSnapshot(
+  val batteryTempC: Float,
+  val thermalStatusCode: Int,
+  val thermalStatusLabel: String,
+  val tier: ThermalTier,
+  val isCharging: Boolean,
+  val sessionPeakTempC: Float,
+  val adviceList: List<String>,
+  val timestampMs: Long = System.currentTimeMillis(),
+)
+
+data class NetworkStabilityEvent(
+  val timestampMs: Long,
+  val transportLabel: String,
+  val subType: String,
+  val isConnected: Boolean,
+  val qualityLevel: Int,
+  val note: String,
+)
+
+data class NetworkStabilitySummary(
+  val isConnected: Boolean = false,
+  val currentTransport: String = "Offline",
+  val currentSubType: String = "-",
+  val interruptionCount: Int = 0,
+  val transitionCount: Int = 0,
+  val recentQualitySamples: List<Int> = emptyList(),
+  val events: List<NetworkStabilityEvent> = emptyList(),
+)
+
+data class SessionRecapSummary(
+  val sessionId: String,
+  val gameName: String,
+  val packageName: String,
+  val startedAtMs: Long,
+  val endedAtMs: Long,
+  val durationMs: Long,
+  val profileUsed: GamingProfile,
+  val avgUiFps: Float?,
+  val performanceWarningsCount: Int,
+  val networkEventsCount: Int,
+  val batteryStartPercent: Int,
+  val batteryEndPercent: Int,
+  val peakTempC: Float,
+  val recordingCount: Int,
+  val screenshotCount: Int,
+)
+
+data class GameAppStorageEntry(
+  val packageName: String,
+  val appName: String,
+  val totalBytes: Long,
+)
+
+data class SmartStorageSnapshot(
+  val deviceTotalBytes: Long,
+  val deviceUsedBytes: Long,
+  val deviceFreeBytes: Long,
+  val drxCacheBytes: Long,
+  val screenshotsCount: Int,
+  val screenshotsBytes: Long,
+  val recordingsCount: Int,
+  val recordingsBytes: Long,
+  val gameAppsTotalBytes: Long?,
+  val gameAppsCount: Int,
+  val topGamesStorage: List<GameAppStorageEntry>,
+  val hasUsageAccessForApps: Boolean,
+  val timestampMs: Long = System.currentTimeMillis(),
+)
+
+enum class CompatibilityStatus {
+  SUPPORTED,
+  LIMITED,
+  UNSUPPORTED,
+}
+
+data class CompatibilityCheckItem(
+  val id: String,
+  val title: String,
+  val valueText: String,
+  val status: CompatibilityStatus,
+  val detailNote: String,
+)
+
+data class GameLaunchCompatibilityItem(
+  val packageName: String,
+  val appName: String,
+  val versionName: String,
+  val isLaunchable: Boolean,
+  val statusNote: String,
+)
+
+data class GameCompatibilityReport(
+  val androidVersionLabel: String,
+  val drxVersionLabel: String,
+  val overallStatus: CompatibilityStatus,
+  val systemChecks: List<CompatibilityCheckItem>,
+  val gameChecks: List<GameLaunchCompatibilityItem>,
+  val checkedAtMs: Long = System.currentTimeMillis(),
+)
+
 
 
